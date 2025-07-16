@@ -8,9 +8,11 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubmissions } from '@/hooks/useSubmissions';
+import { useAllProfiles } from '@/hooks/useAllProfiles';
 import { format, subDays } from 'date-fns';
 import { Role } from '@/lib/roles';
 import { DashboardContent } from '@/components/DashboardContent';
+import { ManagerDashboard } from '@/components/ManagerDashboard';
 
 export default function Dashboard() {
   const { isAuthenticated, profile, logout, loading: authLoading } = useAuth();
@@ -23,6 +25,12 @@ export default function Dashboard() {
     getCompletionStats,
     getSubmissionsByDateRange,
   } = useSubmissions();
+
+  // Para gestores, buscar todos os perfis do setor
+  const {
+    profiles: allProfiles,
+    loading: profilesLoading
+  } = useAllProfiles(profile?.role === Role.MANAGER ? profile.sector : undefined);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -43,8 +51,10 @@ export default function Dashboard() {
     router.push('/login');
   };
 
-  // O loading agora depende apenas do authLoading e do submissionsLoading
-  if (authLoading || submissionsLoading) {
+  // O loading agora depende do authLoading, submissionsLoading e para gestores também profilesLoading
+  const isLoading = authLoading || submissionsLoading || (profile?.role === Role.MANAGER && profilesLoading);
+  
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -86,6 +96,19 @@ export default function Dashboard() {
     };
   }).reverse();
 
+  // Se for gestor, mostrar dashboard analítico
+  if (profile.role === Role.MANAGER) {
+    return (
+      <ManagerDashboard
+        profile={profile}
+        submissions={submissions}
+        allProfiles={allProfiles}
+        handleLogout={handleLogout}
+      />
+    );
+  }
+
+  // Para colaboradores e outros, mostrar dashboard padrão
   return (
     <DashboardContent
       profile={profile}
