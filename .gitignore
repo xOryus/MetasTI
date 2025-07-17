@@ -4,6 +4,7 @@
 /node_modules
 /.pnp
 .pnp.js
+.github\instructions\instructions.md
 
 # testing
 /coverage
