@@ -11,7 +11,8 @@ import { ChecklistForm } from '@/components/ChecklistForm';
 import { Chart } from '@/components/Chart';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubmissions } from '@/hooks/useSubmissions';
-import { format, subDays } from 'date-fns';
+import { useSectorGoals } from '@/hooks/useSectorGoals';
+import { format, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isWithinInterval, isSameDay } from 'date-fns';
 import { Target, TrendingUp, Calendar, Award } from 'lucide-react';
 
 export default function CollaboratorHome() {
@@ -28,20 +29,108 @@ export default function CollaboratorHome() {
     getCompletionStats
   } = useSubmissions();
 
+  const {
+    goals: sectorGoals,
+    loading: goalsLoading,
+    fetchActiveGoalsBySector
+  } = useSectorGoals();
+
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       router.push('/login');
     }
   }, [isAuthenticated, authLoading, router]);
 
-  // Metas do setor (virão do ADMIN futuramente)
-  const sectorGoals = [
-    { id: 'goal1', label: 'Verificar emails importantes', required: true },
-    { id: 'goal2', label: 'Atualizar relatórios diários', required: true },
-    { id: 'goal3', label: 'Confirmar reuniões do dia', required: false },
-    { id: 'goal4', label: 'Revisar tarefas pendentes', required: true },
-    { id: 'goal5', label: 'Backup de dados importantes', required: false },
-  ];
+  // Buscar metas do setor quando o profile for carregado
+  useEffect(() => {
+    if (profile?.sector) {
+      fetchActiveGoalsBySector(profile.sector).catch((error) => {
+        console.warn('Erro ao buscar metas do setor:', error);
+      });
+    }
+  }, [profile?.sector, fetchActiveGoalsBySector]);
+
+  // Converter metas do setor para formato de checklist
+  const checklistGoals = sectorGoals.map(goal => ({
+    id: goal.$id!,
+    label: goal.title,
+    required: goal.type !== 'boolean_checklist'
+  }));
+
+  // Cálculos de performance baseados nas submissões reais
+  const calculateWeeklyCompletion = (weekStart: Date) => {
+    const weekEnd = endOfWeek(weekStart);
+    const weekSubmissions = submissions.filter(sub => 
+      isWithinInterval(new Date(sub.$createdAt!), { start: weekStart, end: weekEnd })
+    );
+    
+    // Assumindo 7 dias de trabalho possíveis na semana (segunda a domingo)
+    const possibleDays = 7;
+    const completedDays = weekSubmissions.length;
+    
+    return Math.round((completedDays / possibleDays) * 100);
+  };
+
+  const calculateMonthlySubmissions = () => {
+    const monthStart = startOfMonth(new Date());
+    const monthEnd = endOfMonth(new Date());
+    
+    return submissions.filter(sub => 
+      isWithinInterval(new Date(sub.$createdAt!), { start: monthStart, end: monthEnd })
+    ).length;
+  };
+
+  const calculateConsecutiveDays = () => {
+    if (submissions.length === 0) return 0;
+    
+    // Ordenar submissões por data (mais recente primeiro)
+    const sortedSubmissions = [...submissions].sort((a, b) => 
+      new Date(b.$createdAt!).getTime() - new Date(a.$createdAt!).getTime()
+    );
+    
+    let streak = 0;
+    let currentDate = new Date();
+    
+    // Verificar a partir de hoje, voltando no tempo
+    for (let i = 0; i < 30; i++) { // Limitar a 30 dias para performance
+      const checkDate = subDays(currentDate, i);
+      const hasSubmission = sortedSubmissions.some(sub => 
+        isSameDay(new Date(sub.$createdAt!), checkDate)
+      );
+      
+      if (hasSubmission) {
+        streak++;
+      } else if (i > 0) { // Se não é hoje e não tem submissão, quebra a sequência
+        break;
+      }
+    }
+    
+    return streak;
+  };
+
+  const generateChartData = () => {
+    const last7Days = Array.from({ length: 7 }, (_, i) => {
+      const date = subDays(new Date(), 6 - i);
+      const daySubmissions = submissions.filter(sub => 
+        isSameDay(new Date(sub.$createdAt!), date)
+      );
+      
+      // Calcular taxa de conclusão baseada no número de metas vs respostas
+      const totalGoals = checklistGoals.length;
+      const hasSubmission = daySubmissions.length > 0;
+      
+      // Se tem submissão, assume 100%, senão 0%
+      // TODO: Futuramente podemos calcular baseado nas respostas individuais
+      const completionRate = hasSubmission && totalGoals > 0 ? 100 : 0;
+      
+      return {
+        date: format(date, 'dd/MM'),
+        completion: completionRate
+      };
+    });
+    
+    return last7Days;
+  };
 
   const handleSubmit = async (
     answers: Record<string, boolean>,
@@ -74,26 +163,17 @@ export default function CollaboratorHome() {
     }
   };
 
-  // Dados pessoais para gráficos simples
-  const getPersonalChartData = () => {
-    const last7Days = Array.from({ length: 7 }, (_, i) => {
-      const date = subDays(new Date(), i);
-      const dateStr = format(date, 'dd/MM');
-      
-      // Simular dados pessoais (na realidade virá das submissões)
-      const completion = Math.floor(Math.random() * 30) + 70; // 70-100%
-      
-      return { date: dateStr, completion };
-    }).reverse();
-
-    return last7Days;
-  };
+  // Calcular estatísticas pessoais com base nos dados reais
+  const thisWeekCompletion = calculateWeeklyCompletion(startOfWeek(new Date()));
+  const lastWeekCompletion = calculateWeeklyCompletion(startOfWeek(subDays(new Date(), 7)));
+  const consecutiveDays = calculateConsecutiveDays();
+  const monthlySubmissions = calculateMonthlySubmissions();
 
   const personalStats = {
-    thisWeek: 85,
-    lastWeek: 78,
-    streak: 5, // dias consecutivos
-    totalThisMonth: 23
+    thisWeek: Math.round(thisWeekCompletion),
+    lastWeek: Math.round(lastWeekCompletion),
+    streak: consecutiveDays,
+    totalThisMonth: monthlySubmissions
   };
 
   if (authLoading || submissionsLoading) {
@@ -145,6 +225,7 @@ export default function CollaboratorHome() {
                   <div className="w-1 h-8 bg-gradient-to-b from-blue-500 to-blue-600 rounded-full"></div>
                   Checklist Diário - {format(new Date(), 'dd/MM/yyyy')}
                 </CardTitle>
+                
                 {hasSubmittedToday && (
                   <div className="bg-green-50 border border-green-200 rounded-lg p-3 mt-4">
                     <p className="text-green-800 font-medium">✅ Checklist já enviado hoje!</p>
@@ -152,9 +233,24 @@ export default function CollaboratorHome() {
                 )}
               </CardHeader>
               <CardContent>
-                {!hasSubmittedToday ? (
+                {goalsLoading ? (
+                  <div className="text-center py-12">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                    <p className="mt-4 text-gray-600">Carregando metas do setor...</p>
+                  </div>
+                ) : checklistGoals.length === 0 ? (
+                  <div className="text-center py-12 text-gray-500">
+                    <Target className="w-16 h-16 mx-auto mb-4 text-blue-400" />
+                    <h3 className="text-lg font-medium text-gray-700 mb-2">
+                      Nenhuma meta configurada
+                    </h3>
+                    <p className="text-sm">
+                      O administrador ainda não configurou metas para o setor {profile?.sector}.
+                    </p>
+                  </div>
+                ) : !hasSubmittedToday ? (
                   <ChecklistForm
-                    items={sectorGoals}
+                    items={checklistGoals}
                     onSubmit={handleSubmit}
                     loading={submitLoading}
                     error={submitError}
@@ -214,7 +310,7 @@ export default function CollaboratorHome() {
 
             {/* Gráfico Pessoal Simples */}
             <Chart
-              data={getPersonalChartData()}
+              data={generateChartData()}
               title="Minha Performance - 7 Dias"
               type="line"
               height={200}

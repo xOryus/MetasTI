@@ -16,17 +16,17 @@ import { Sector } from '@/lib/appwrite';
 import { Role } from '@/lib/roles';
 
 interface UserFormProps {
-  onSubmit: (userData: {
+  onSubmitAction: (userData: {
     email: string;
     password: string;
     sector: Sector;
     role: Role;
-  }) => Promise<void>;
+  }) => Promise<boolean>;
   loading?: boolean;
   error?: string | null;
 }
 
-export function UserForm({ onSubmit, loading, error }: UserFormProps) {
+export function UserForm({ onSubmitAction, loading, error }: UserFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [sector, setSector] = useState<Sector | ''>('');
@@ -47,18 +47,20 @@ export function UserForm({ onSubmit, loading, error }: UserFormProps) {
       return;
     }
     
-    await onSubmit({
+    const success = await onSubmitAction({
       email,
       password,
       sector: sector as Sector,
       role: role as Role
     });
     
-    // Reset form
-    setEmail('');
-    setPassword('');
-    setSector('');
-    setRole('');
+    // Só resetar o formulário se a operação foi bem-sucedida
+    if (success) {
+      setEmail('');
+      setPassword('');
+      setSector('');
+      setRole('');
+    }
   };
 
   return (
@@ -99,10 +101,23 @@ export function UserForm({ onSubmit, loading, error }: UserFormProps) {
                 <SelectValue placeholder="Selecione o setor" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="TI">TI</SelectItem>
-                <SelectItem value="RH">RH</SelectItem>
-                <SelectItem value="LOGISTICA">Logística</SelectItem>
-                <SelectItem value="PORTARIA">Portaria</SelectItem>
+                <SelectItem value="TI">💻 TI</SelectItem>
+                <SelectItem value="RH">👥 RH</SelectItem>
+                <SelectItem value="LOGISTICA">📦 Logística</SelectItem>
+                <SelectItem value="FROTAS">🚛 Frotas</SelectItem>
+                <SelectItem value="ABATE">🥩 Abate</SelectItem>
+                <SelectItem value="DESOSSA">🔪 Desossa</SelectItem>
+                <SelectItem value="MIUDOS">🍖 Miúdos</SelectItem>
+                <SelectItem value="EXPEDICAO">📋 Expedição</SelectItem>
+                <SelectItem value="GERAL_GESTORES">👔 Geral Gestores</SelectItem>
+                <SelectItem value="FINANCEIRO">💰 Financeiro</SelectItem>
+                <SelectItem value="FISCAL_CONTABIL">📊 Fiscal Contábil</SelectItem>
+                <SelectItem value="COMERCIAL">🤝 Comercial</SelectItem>
+                <SelectItem value="COMPRA_GADO">🐄 Compra Gado</SelectItem>
+                <SelectItem value="ALMOXARIFADO">📦 Almoxarifado</SelectItem>
+                <SelectItem value="MANUTENCAO">🔧 Manutenção</SelectItem>
+                <SelectItem value="LAVANDERIA">🧺 Lavanderia</SelectItem>
+                <SelectItem value="COZINHA">👨‍🍳 Cozinha</SelectItem>
               </SelectContent>
             </Select>
           </div>

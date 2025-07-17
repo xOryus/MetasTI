@@ -119,8 +119,8 @@ export function useSubmissions() {
         {
           userProfile: userProfileId,
           date: new Date().toISOString(),
-          answers: JSON.stringify(answers),
-          observation,
+          checklist: JSON.stringify(answers), // Usando checklist em vez de answers
+          observation: observation || '',
           printFileId: uploadResponse.$id
         }
       );

@@ -20,14 +20,43 @@ export const storage = new Storage(client);
 export const DATABASE_ID = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID!;
 export const USER_PROFILES_COLLECTION = process.env.NEXT_PUBLIC_APPWRITE_PROFILES_COLLECTION_ID!;
 export const SUBMISSIONS_COLLECTION = process.env.NEXT_PUBLIC_APPWRITE_SUBMISSIONS_COLLECTION_ID!;
-export const PRINTS_BUCKET = 'prints';
+export const SECTOR_GOALS_COLLECTION = process.env.NEXT_PUBLIC_APPWRITE_SECTOR_GOALS_COLLECTION_ID!;
+export const PRINTS_BUCKET = process.env.NEXT_PUBLIC_APPWRITE_PRINTS_BUCKET_ID!;
 
 // Enums
 export enum Sector {
   TI = 'TI',
   RH = 'RH',
   LOGISTICA = 'LOGISTICA',
-  PORTARIA = 'PORTARIA'
+  FROTAS = 'FROTAS',
+  ABATE = 'ABATE',
+  DESOSSA = 'DESOSSA',
+  MIUDOS = 'MIUDOS',
+  EXPEDICAO = 'EXPEDICAO',
+  GERAL_GESTORES = 'GERAL_GESTORES',
+  FINANCEIRO = 'FINANCEIRO',
+  FISCAL_CONTABIL = 'FISCAL_CONTABIL',
+  COMERCIAL = 'COMERCIAL',
+  COMPRA_GADO = 'COMPRA_GADO',
+  ALMOXARIFADO = 'ALMOXARIFADO',
+  MANUTENCAO = 'MANUTENCAO',
+  LAVANDERIA = 'LAVANDERIA',
+  COZINHA = 'COZINHA'
+}
+
+export enum GoalType {
+  NUMERIC = 'numeric',
+  BOOLEAN_CHECKLIST = 'boolean_checklist',
+  TASK_COMPLETION = 'task_completion',
+  PERCENTAGE = 'percentage'
+}
+
+export enum GoalPeriod {
+  DAILY = 'daily',
+  WEEKLY = 'weekly',
+  MONTHLY = 'monthly',
+  QUARTERLY = 'quarterly',
+  YEARLY = 'yearly'
 }
 
 // Remover duplicação - usar apenas lib/roles.ts
@@ -38,6 +67,23 @@ export enum Sector {
 // }
 
 // Tipos
+export interface SectorGoal {
+  $id?: string;
+  $createdAt?: string;
+  $updatedAt?: string;
+  $permissions?: string[];
+  title: string;
+  description: string;
+  sectorId: string; // Mudou de 'sector' para 'sectorId'
+  type: GoalType; // Mudou de 'goalType' para 'type'
+  targetValue: number;
+  unit: string; // Novo atributo
+  checklistItems?: string[]; // Novo atributo
+  period: GoalPeriod;
+  category: string; // Novo atributo
+  isActive: boolean;
+}
+
 export interface UserProfile {
   $id: string;
   userId: string;
@@ -51,11 +97,21 @@ export interface Submission {
   $id: string;
   userProfile: UserProfile;
   date: string;
-  answers: string;
+  checklist: string; // JSON string com as respostas do checklist
   observation?: string;
   printFileId: string;
   $createdAt: string;
   $updatedAt: string;
 }
+
+// Função utilitária para gerar URL de visualização de arquivo
+export const getFilePreview = (fileId: string): string => {
+  return `${process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT}/storage/buckets/${PRINTS_BUCKET}/files/${fileId}/view?project=${process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID}`;
+};
+
+// Função utilitária para gerar URL de download de arquivo
+export const getFileDownload = (fileId: string): string => {
+  return `${process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT}/storage/buckets/${PRINTS_BUCKET}/files/${fileId}/download?project=${process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID}`;
+};
 
 export { ID };
