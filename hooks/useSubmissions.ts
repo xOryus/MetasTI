@@ -34,12 +34,35 @@ export function useSubmissions() {
       
       if (profile.role === Role.COLLABORATOR) {
         // Colaborador só vê as próprias submissões
+        // CORREÇÃO: usar o ID do perfil, não userId
         queries.push(Query.equal('userProfile', profile.$id));
       } else if (profile.role === Role.MANAGER) {
         // Gestor vê todas as submissões do seu setor
-        // NOTA: Isso depende da configuração de índices do Appwrite para funcionar
-        // e da versão do SDK suportar queries em relacionamentos.
-        queries.push(Query.equal('userProfile.sector', profile.sector));
+        // CORREÇÃO: Primeiro buscar todos os usuários do setor, depois suas submissões
+        try {
+          const profilesResponse = await databases.listDocuments(
+            DATABASE_ID,
+            'user_profiles', // Collection de perfis
+            [Query.equal('sector', profile.sector)]
+          );
+          
+          const profileIds = profilesResponse.documents.map(p => p.$id);
+          
+          if (profileIds.length === 0) {
+            console.log('[useSubmissions] Nenhum usuário encontrado no setor:', profile.sector);
+            setSubmissions([]);
+            setLoading(false);
+            return;
+          }
+          
+          // Agora buscar submissões desses perfis
+          queries.push(Query.equal('userProfile', profileIds));
+        } catch (profileError) {
+          console.error('[useSubmissions] Erro ao buscar perfis do setor:', profileError);
+          setError('Erro ao carregar dados do setor');
+          setLoading(false);
+          return;
+        }
       }
       // ADMIN não tem filtro, busca tudo.
 

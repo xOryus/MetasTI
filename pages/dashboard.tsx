@@ -1,121 +1,50 @@
 /**
- * Dashboard para gestores e colaboradores
- * Visualização de métricas e submissões do setor
- * VERSÃO CLIENT-SIDE (funcional)
+ * Página de redirecionamento para dashboards
+ * Redireciona para os novos dashboards específicos por role
  */
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/hooks/useAuth';
-import { useSubmissions } from '@/hooks/useSubmissions';
-import { useAllProfiles } from '@/hooks/useAllProfiles';
-import { format, subDays } from 'date-fns';
 import { Role } from '@/lib/roles';
-import { DashboardContent } from '@/components/DashboardContent';
-import { ManagerDashboard } from '@/components/ManagerDashboard';
 
 export default function Dashboard() {
-  const { isAuthenticated, profile, logout, loading: authLoading } = useAuth();
+  const { isAuthenticated, profile, loading: authLoading } = useAuth();
   const router = useRouter();
 
-  // O hook useSubmissions agora é inteligente e não precisa de parâmetros
-  const {
-    submissions,
-    loading: submissionsLoading,
-    getCompletionStats,
-    getSubmissionsByDateRange,
-  } = useSubmissions();
-
-  // Para gestores, buscar todos os perfis do setor
-  const {
-    profiles: allProfiles,
-    loading: profilesLoading
-  } = useAllProfiles(profile?.role === Role.MANAGER ? profile.sector : undefined);
-
   useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      router.push('/login');
-    } else if (
-      !authLoading &&
-      isAuthenticated &&
-      profile?.role !== Role.MANAGER &&
-      profile?.role !== Role.COLLABORATOR &&
-      profile?.role !== Role.ADMIN
-    ) {
-      router.push('/home'); // Redireciona se não tiver permissão
+    if (!authLoading) {
+      if (!isAuthenticated) {
+        router.push('/login');
+        return;
+      }
+
+      if (profile) {
+        // Redirecionar para os novos dashboards específicos
+        switch (profile.role) {
+          case Role.COLLABORATOR:
+            router.push('/home/collaborator');
+            break;
+          case Role.MANAGER:
+            router.push('/home/manager');
+            break;
+          case Role.ADMIN:
+            router.push('/admin');
+            break;
+          default:
+            router.push('/login');
+        }
+      }
     }
   }, [isAuthenticated, profile, authLoading, router]);
 
-  const handleLogout = async () => {
-    await logout();
-    router.push('/login');
-  };
-
-  // O loading agora depende do authLoading, submissionsLoading e para gestores também profilesLoading
-  const isLoading = authLoading || submissionsLoading || (profile?.role === Role.MANAGER && profilesLoading);
-  
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Carregando...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Se a autenticação terminou e não há perfil, algo deu errado.
-  if (!profile) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-600">Erro ao carregar perfil do usuário.</p>
-          <button 
-            onClick={handleLogout}
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-          >
-            Fazer Login Novamente
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  const completionStats = getCompletionStats();
-  const last7DaysSubmissions = getSubmissionsByDateRange(subDays(new Date(), 7), new Date());
-  const chartData = Array.from({ length: 7 }, (_, i) => {
-    const date = subDays(new Date(), i);
-    const formattedDate = format(date, 'dd/MM');
-    const daySubmissions = last7DaysSubmissions.filter(
-      (sub) => format(new Date(sub.date), 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')
-    );
-    return {
-      date: formattedDate,
-      value: daySubmissions.length > 0 ? 100 : 0, // Simplificado: 100% se houve submissão
-    };
-  }).reverse();
-
-  // Se for gestor, mostrar dashboard analítico
-  if (profile.role === Role.MANAGER) {
-    return (
-      <ManagerDashboard
-        profile={profile}
-        submissions={submissions}
-        allProfiles={allProfiles}
-        handleLogout={handleLogout}
-      />
-    );
-  }
-
-  // Para colaboradores e outros, mostrar dashboard padrão
+  // Loading state
   return (
-    <DashboardContent
-      profile={profile}
-      submissions={submissions}
-      completionStats={completionStats}
-      chartData={chartData}
-      handleLogout={handleLogout}
-    />
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+        <p className="text-gray-600">Redirecionando para seu dashboard...</p>
+      </div>
+    </div>
   );
 }

@@ -17,9 +17,9 @@ export const databases = new Databases(client);
 export const storage = new Storage(client);
 
 // Constantes
-export const DATABASE_ID = process.env.NEXT_PUBLIC_DATABASE_ID!;
-export const USER_PROFILES_COLLECTION = process.env.NEXT_PUBLIC_USER_PROFILES_COLLECTION_ID!;
-export const SUBMISSIONS_COLLECTION = process.env.NEXT_PUBLIC_SUBMISSIONS_COLLECTION_ID!;
+export const DATABASE_ID = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID!;
+export const USER_PROFILES_COLLECTION = process.env.NEXT_PUBLIC_APPWRITE_PROFILES_COLLECTION_ID!;
+export const SUBMISSIONS_COLLECTION = process.env.NEXT_PUBLIC_APPWRITE_SUBMISSIONS_COLLECTION_ID!;
 export const PRINTS_BUCKET = 'prints';
 
 // Enums
