@@ -3,7 +3,7 @@
  * Checklist simples baseado nas metas do setor + gráficos mínimos individuais
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -52,27 +52,29 @@ export default function CollaboratorHome() {
   }, [profile?.sector, fetchActiveGoalsBySector]);
 
   // Converter metas do setor para formato de checklist com títulos e descrições
-  const checklistGoals = sectorGoals.flatMap(goal => {
-    if (goal.type === 'boolean_checklist' && goal.checklistItems) {
-      // Para metas do tipo boolean_checklist, expandir cada item da lista
-      return goal.checklistItems.map((item, index) => ({
-        id: `${goal.$id}-${index}`,
-        label: item,
-        goalTitle: goal.title,
-        goalDescription: goal.description,
-        required: true
-      }));
-    } else {
-      // Para outros tipos de metas, criar um item único
-      return [{
-        id: goal.$id!,
-        label: goal.title,
-        goalTitle: goal.title,
-        goalDescription: goal.description,
-        required: goal.type !== 'boolean_checklist'
-      }];
-    }
-  });
+  const checklistGoals = useMemo(() => {
+    return sectorGoals.flatMap(goal => {
+      if (goal.type === 'boolean_checklist' && goal.checklistItems) {
+        // Para metas do tipo boolean_checklist, expandir cada item da lista
+        return goal.checklistItems.map((item, index) => ({
+          id: `${goal.$id}-${index}`,
+          label: item,
+          goalTitle: goal.title,
+          goalDescription: goal.description,
+          required: true
+        }));
+      } else {
+        // Para outros tipos de metas, criar um item único
+        return [{
+          id: goal.$id!,
+          label: goal.title,
+          goalTitle: goal.title,
+          goalDescription: goal.description,
+          required: goal.type !== 'boolean_checklist'
+        }];
+      }
+    });
+  }, [sectorGoals]);
 
   // Cálculos de performance baseados nas submissões reais
   const calculateWeeklyCompletion = (weekStart: Date) => {
@@ -125,7 +127,8 @@ export default function CollaboratorHome() {
     return streak;
   };
 
-  const generateChartData = () => {
+  // Dados do gráfico otimizados com memoização
+  const chartData = useMemo(() => {
     const last7Days = Array.from({ length: 7 }, (_, i) => {
       const date = subDays(new Date(), 6 - i);
       const daySubmissions = submissions.filter(sub => 
@@ -147,7 +150,7 @@ export default function CollaboratorHome() {
     });
     
     return last7Days;
-  };
+  }, [submissions, checklistGoals]);
 
   const handleSubmit = async (
     answers: Record<string, boolean>,
@@ -184,17 +187,21 @@ export default function CollaboratorHome() {
   };
 
   // Calcular estatísticas pessoais com base nos dados reais
-  const thisWeekCompletion = calculateWeeklyCompletion(startOfWeek(new Date()));
-  const lastWeekCompletion = calculateWeeklyCompletion(startOfWeek(subDays(new Date(), 7)));
-  const consecutiveDays = calculateConsecutiveDays();
-  const monthlySubmissions = calculateMonthlySubmissions();
+  const personalStats = useMemo(() => {
+    const thisWeekCompletion = calculateWeeklyCompletion(startOfWeek(new Date()));
+    const lastWeekCompletion = calculateWeeklyCompletion(startOfWeek(subDays(new Date(), 7)));
+    const consecutiveDays = calculateConsecutiveDays();
+    const monthlySubmissions = calculateMonthlySubmissions();
 
-  const personalStats = {
-    thisWeek: Math.round(thisWeekCompletion),
-    lastWeek: Math.round(lastWeekCompletion),
-    streak: consecutiveDays,
-    totalThisMonth: monthlySubmissions
-  };
+    return {
+      thisWeek: Math.round(thisWeekCompletion),
+      lastWeek: Math.round(lastWeekCompletion),
+      streak: consecutiveDays,
+      totalThisMonth: monthlySubmissions
+    };
+  }, [submissions]);
+
+  // Remover as variáveis individuais que agora estão dentro do useMemo
 
   if (authLoading || submissionsLoading) {
     return (
@@ -330,7 +337,7 @@ export default function CollaboratorHome() {
 
             {/* Gráfico Pessoal Simples */}
             <Chart
-              data={generateChartData()}
+              data={chartData}
               title="Minha Performance - 7 Dias"
               type="line"
               height={200}
