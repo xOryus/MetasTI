@@ -39,16 +39,19 @@ export function LoginForm() {
       
       // Adicionar pequeno delay para garantir que os estados sejam atualizados
       setTimeout(() => {
-        // Redirecionar baseado no role usando window.location para garantir navegação
+        // Redirecionar diretamente para as páginas específicas por role
         if (profile?.role === Role.ADMIN) {
           console.log('Redirecionando para /admin');
           window.location.href = '/admin';
-        } else if (profile?.role === Role.MANAGER || profile?.role === Role.COLLABORATOR) {
-          console.log(`Redirecionando para dashboard para role: ${profile.role}`);
-          window.location.href = `/dashboard?sector=${profile?.sector || ''}`;
+        } else if (profile?.role === Role.MANAGER) {
+          console.log(`Redirecionando para dashboard manager`);
+          window.location.href = '/home/manager';
+        } else if (profile?.role === Role.COLLABORATOR) {
+          console.log(`Redirecionando para dashboard collaborator`);
+          window.location.href = '/home/collaborator';
         } else {
-          console.log('Role não reconhecido ou sem dashboard, redirecionando para /');
-          window.location.href = '/'; // Fallback para uma página inicial genérica
+          console.log('Role não reconhecido, redirecionando para /login');
+          window.location.href = '/login';
         }
       }, 500);
     } catch (error: any) {

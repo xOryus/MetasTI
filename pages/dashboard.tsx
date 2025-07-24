@@ -1,6 +1,7 @@
 /**
- * Página de redirecionamento para dashboards
- * Redireciona para os novos dashboards específicos por role
+ * Página de redirecionamento para dashboards (LEGACY/FALLBACK)
+ * Esta página agora serve como fallback caso alguém acesse /dashboard diretamente
+ * O fluxo principal agora redireciona diretamente do login para as páginas específicas
  */
 
 import { useEffect } from 'react';

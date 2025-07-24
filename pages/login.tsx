@@ -14,13 +14,15 @@ export default function Login() {
 
   useEffect(() => {
     if (!loading && isAuthenticated && profile) {
-      // Redirecionar baseado no role
+      // Redirecionar diretamente para as páginas específicas por role
       if (profile.role === 'admin') {
         router.push('/admin');
       } else if (profile.role === 'manager') {
-        router.push(`/dashboard?sector=${profile.sector}`);
+        router.push('/home/manager');
+      } else if (profile.role === 'collaborator') {
+        router.push('/home/collaborator');
       } else {
-        router.push('/home');
+        router.push('/login');
       }
     }
   }, [isAuthenticated, profile, loading, router]);
