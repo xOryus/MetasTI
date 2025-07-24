@@ -78,8 +78,13 @@ export function SectorGoalsManager() {
       return;
     }
 
-    if (formData.type === GoalType.TASK_COMPLETION && !formData.unit) {
+    if (formData.type === GoalType.TASK_COMPLETION && !formData.description) {
       toast.error('Preencha a descrição da tarefa');
+      return;
+    }
+
+    if (formData.type === GoalType.NUMERIC && !formData.description) {
+      toast.error('Preencha a descrição da meta');
       return;
     }
 

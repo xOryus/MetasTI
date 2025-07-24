@@ -246,35 +246,66 @@ export function GoalForm({ formData, handleInputChange, isEdit = false, onStepCh
             </div>
           </div>
 
-          {/* Descrição geral (apenas para tipos que não têm campo específico) */}
-          {formData.type === GoalType.PERCENTAGE && (
-            <div className="space-y-2">
-              <Label htmlFor="description">Descrição</Label>
-              <Textarea
-                id="description"
-                value={formData.description}
-                onChange={(e) => handleInputChange('description', e.target.value)}
-                placeholder="Descrição detalhada da meta..."
-                className="min-h-20"
-              />
+          {/* Campos específicos para metas numéricas */}
+          {formData.type === GoalType.NUMERIC && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="targetValue">Valor Alvo *</Label>
+                <Input
+                  id="targetValue"
+                  type="number"
+                  value={formData.targetValue}
+                  onChange={(e) => handleInputChange('targetValue', e.target.value)}
+                  placeholder="100"
+                  min="0"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="numericDescription">Descrição da Meta * (máx. 100 caracteres)</Label>
+                <Input
+                  id="numericDescription"
+                  value={formData.description}
+                  onChange={(e) => handleInputChange('description', e.target.value.slice(0, 100))}
+                  placeholder="Ex: vendas realizadas por mês, peças produzidas por dia"
+                  maxLength={100}
+                />
+                <p className="text-sm text-muted-foreground">
+                  {formData.description.length}/100 caracteres - Descreva o que será medido
+                </p>
+              </div>
             </div>
           )}
 
-          {/* Campos específicos para cada tipo de meta */}
-          {(formData.type === GoalType.NUMERIC || formData.type === GoalType.PERCENTAGE) && (
-            <div className="space-y-2">
-              <Label htmlFor="targetValue">
-                {formData.type === GoalType.PERCENTAGE ? 'Porcentagem Alvo (%) *' : 'Valor Alvo *'}
-              </Label>
-              <Input
-                id="targetValue"
-                type="number"
-                value={formData.targetValue}
-                onChange={(e) => handleInputChange('targetValue', e.target.value)}
-                placeholder={formData.type === GoalType.PERCENTAGE ? '85' : '100'}
-                min="0"
-                max={formData.type === GoalType.PERCENTAGE ? '100' : undefined}
-              />
+          {/* Campos específicos para metas de porcentagem */}
+          {formData.type === GoalType.PERCENTAGE && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="targetValuePercentage">Porcentagem Alvo (%) *</Label>
+                <Input
+                  id="targetValuePercentage"
+                  type="number"
+                  value={formData.targetValue}
+                  onChange={(e) => handleInputChange('targetValue', e.target.value)}
+                  placeholder="85"
+                  min="0"
+                  max="100"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="percentageDescription">Descrição (máx. 100 caracteres)</Label>
+                <Input
+                  id="percentageDescription"
+                  value={formData.description}
+                  onChange={(e) => handleInputChange('description', e.target.value.slice(0, 100))}
+                  placeholder="Ex: % de satisfação do cliente, % de conclusão de tarefas"
+                  maxLength={100}
+                />
+                <p className="text-sm text-muted-foreground">
+                  {formData.description.length}/100 caracteres - Opcional: o que a porcentagem representa
+                </p>
+              </div>
             </div>
           )}
 
@@ -319,23 +350,6 @@ export function GoalForm({ formData, handleInputChange, isEdit = false, onStepCh
               />
               <p className="text-sm text-muted-foreground">
                 {formData.description.length}/100 caracteres - Descreva brevemente esta tarefa
-              </p>
-            </div>
-          )}
-
-          {/* Campo específico para metas numéricas */}
-          {formData.type === GoalType.NUMERIC && (
-            <div className="space-y-2">
-              <Label htmlFor="numericDescription">Descrição da Meta * (máx. 100 caracteres)</Label>
-              <Input
-                id="numericDescription"
-                value={formData.description}
-                onChange={(e) => handleInputChange('description', e.target.value.slice(0, 100))}
-                placeholder="Ex: vendas realizadas, chamados atendidos, peças produzidas"
-                maxLength={100}
-              />
-              <p className="text-sm text-muted-foreground">
-                {formData.description.length}/100 caracteres - Descreva como será medido
               </p>
             </div>
           )}
