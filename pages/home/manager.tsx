@@ -18,6 +18,7 @@ import {
   Users, TrendingUp, Target, Award, BarChart3, Calendar, 
   Activity, PieChart, Trophy, TrendingDown 
 } from 'lucide-react';
+import { logger } from '@/lib/logger';
 import { Role } from '@/lib/roles';
 
 interface DashboardMetrics {
@@ -287,7 +288,7 @@ export default function ManagerDashboard() {
       await logout();
       router.push('/login');
     } catch (error) {
-      console.error('Erro ao fazer logout:', error);
+      logger.auth.error(`Erro ao fazer logout: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     }
   };
 

@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react';
 import { account, databases, DATABASE_ID, USER_PROFILES_COLLECTION, UserProfile, Sector } from '@/lib/appwrite';
 import { Models, Query } from 'appwrite';
 import { Role } from '@/lib/roles';
+import { logger } from '@/lib/logger';
 
 interface AuthState {
   user: Models.User<Models.Preferences> | null;
@@ -27,24 +28,24 @@ export function useAuth() {
 
   const fetchUserProfile = async (userId: string) => {
     try {
-      console.log('Buscando perfil para userId:', userId);
+      logger.api.request(`profiles/${userId.slice(0, 8)}...`);
+      
       const profiles = await databases.listDocuments(
         DATABASE_ID,
         USER_PROFILES_COLLECTION,
         [Query.equal('userId', userId)]
       );
       
-      console.log('Profiles encontrados:', profiles.documents.length);
-      
       if (profiles.documents.length > 0) {
         const profile = profiles.documents[0] as unknown as UserProfile;
-        console.log('Perfil carregado:', profile);
+        logger.auth.profile(profile.sector, profile.role);
         return profile;
       }
-      console.log('Nenhum perfil encontrado para userId:', userId);
+      
+      logger.data.empty('perfil');
       return null;
     } catch (error) {
-      console.error('Erro ao buscar perfil:', error);
+      logger.auth.error('Falha ao carregar perfil');
       return null;
     }
   };
@@ -58,7 +59,7 @@ export function useAuth() {
       const adminPassword = process.env.NEXT_PUBLIC_ADMIN_PASSWORD;
       
       if (adminEmail && adminPassword && email === adminEmail && password === adminPassword) {
-        console.log('Admin login detectado');
+        logger.auth.login('Administrador');
         // Salvar na sessionStorage que é admin para persistir na navegação
         sessionStorage.setItem('isAdminLogin', 'true');
         
@@ -97,7 +98,7 @@ export function useAuth() {
       // Login normal via Appwrite
       const session = await account.createEmailPasswordSession(email, password);
       const user = await account.get();
-      console.log('Login realizado para usuário:', user);
+      logger.auth.login(user.email);
       const profile = await fetchUserProfile(user.$id);
       
       if (!profile) {
@@ -123,15 +124,16 @@ export function useAuth() {
         await account.deleteSession('current');
       } catch (e) {
         // Ignora erro se for admin (não tem sessão no Appwrite)
-        console.log('Logout: sessão não encontrada no Appwrite');
+        logger.ui.interaction('logout sem sessão');
       }
       
       setState({ user: null, profile: null, loading: false, error: null });
+      logger.auth.logout();
       
       // Redirecionar para login
       window.location.href = '/login';
     } catch (error) {
-      console.error('Erro ao fazer logout:', error);
+      logger.auth.error('Falha no logout');
     }
   };
 
@@ -142,7 +144,7 @@ export function useAuth() {
         const isAdminLogin = sessionStorage.getItem('isAdminLogin') === 'true';
         
         if (isAdminLogin) {
-          console.log('Restaurando sessão de admin');
+          logger.ui.navigate('admin session');
           const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
           
           const adminUser = {
@@ -185,12 +187,10 @@ export function useAuth() {
           if (session) {
             // Agora que confirmamos que há uma sessão, podemos obter o usuário
             const user = await account.get();
-            console.log('Usuário autenticado:', user);
             const profile = await fetchUserProfile(user.$id);
-            console.log('Perfil carregado:', profile);
             
             if (!profile) {
-              console.error('Perfil não encontrado para o usuário:', user.$id);
+              logger.auth.error('Perfil não encontrado');
               setState({ user: null, profile: null, loading: false, error: 'Perfil de usuário não encontrado' });
             } else {
               setState({ user, profile, loading: false, error: null });
@@ -203,7 +203,7 @@ export function useAuth() {
           setState({ user: null, profile: null, loading: false, error: null });
         }
       } catch (error) {
-        console.log('Erro na verificação de autenticação:', error);
+        logger.auth.error('Verificação de sessão falhou');
         setState({ user: null, profile: null, loading: false, error: null });
       }
     };

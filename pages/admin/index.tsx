@@ -18,6 +18,7 @@ import { SectorGoalsManager } from '@/components/SectorGoalsManager';
 import { useAuth } from '@/hooks/useAuth';
 import { UserProfile, Sector } from '@/lib/appwrite';
 import { Role } from '@/lib/roles';
+import { logger } from '@/lib/logger';
 import { 
   Users, 
   Target, 
@@ -106,12 +107,12 @@ export default function AdminPanel() {
       
       // Alertar sobre órfãos se existirem
       if (stats.orphans > 0) {
-        console.warn(`⚠️ ${stats.orphans} usuário(s) órfão(s) detectado(s)`);
+        logger.data.empty(`${stats.orphans} usuário(s) órfão(s) detectado(s)`);
         setError(`Atenção: ${stats.orphans} usuário(s) órfão(s) encontrado(s). Considere fazer limpeza.`);
       }
       
     } catch (err) {
-      console.error('Erro ao buscar usuários:', err);
+      logger.api.error('users', `Erro ao buscar usuários: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
       setError(err instanceof Error ? err.message : 'Erro desconhecido');
     } finally {
       setLoading(false);
@@ -154,7 +155,7 @@ export default function AdminPanel() {
 
       await fetchUsers();
     } catch (err) {
-      console.error('Erro ao excluir usuário:', err);
+      logger.api.error('users', `Erro ao excluir usuário: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
       setError(err instanceof Error ? err.message : 'Erro ao excluir usuário');
     }
   };
@@ -164,7 +165,7 @@ export default function AdminPanel() {
       await logout();
       router.push('/login');
     } catch (err) {
-      console.error('Erro ao fazer logout:', err);
+      logger.auth.error(`Erro ao fazer logout: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
     }
   };
 
@@ -189,7 +190,7 @@ export default function AdminPanel() {
       await fetchUsers();
       return true;
     } catch (err) {
-      console.error('Erro ao criar usuário:', err);
+      logger.api.error('users', `Erro ao criar usuário: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
       setError(err instanceof Error ? err.message : 'Erro ao criar usuário');
       return false;
     }

@@ -3,14 +3,13 @@
  * Busca, cria e filtra submissões baseado no perfil do usuário logado
  */
 
-'use client';
-
 import { useEffect, useState } from 'react';
 import { databases, storage, DATABASE_ID, SUBMISSIONS_COLLECTION, PRINTS_BUCKET, Submission, ID } from '@/lib/appwrite';
 import { Query } from 'appwrite';
 import { format } from 'date-fns';
 import { useAuth } from './useAuth';
 import { Role } from '@/lib/roles';
+import { logger } from '@/lib/logger';
 
 export function useSubmissions() {
   const { profile, loading: authLoading } = useAuth();
@@ -25,7 +24,7 @@ export function useSubmissions() {
       return;
     }
 
-    console.log(`[useSubmissions] Iniciando busca para perfil: ${profile.role} - ${profile.sector}`);
+    logger.api.request(`submissions/${profile.role}`);
 
     try {
       setLoading(true);
@@ -49,7 +48,7 @@ export function useSubmissions() {
           const profileIds = profilesResponse.documents.map(p => p.$id);
           
           if (profileIds.length === 0) {
-            console.log('[useSubmissions] Nenhum usuário encontrado no setor:', profile.sector);
+            logger.data.empty('usuários no setor');
             setSubmissions([]);
             setLoading(false);
             return;
@@ -58,7 +57,7 @@ export function useSubmissions() {
           // Agora buscar submissões desses perfis
           queries.push(Query.equal('userProfile', profileIds));
         } catch (profileError) {
-          console.error('[useSubmissions] Erro ao buscar perfis do setor:', profileError);
+          logger.api.error('perfis do setor', 'Falha na requisição');
           setError('Erro ao carregar dados do setor');
           setLoading(false);
           return;
@@ -68,24 +67,22 @@ export function useSubmissions() {
 
       // Se não for admin e não tiver query, algo está errado.
       if (queries.length === 0 && profile.role !== Role.ADMIN) {
-        console.warn('[useSubmissions] Nenhuma query foi formada para o perfil:', profile.role);
+        logger.data.empty('queries para perfil');
         setSubmissions([]);
         setLoading(false);
         return;
       }
       
-      console.log('[useSubmissions] Executando com queries:', queries.map(q => q.toString()));
-
       const response = await databases.listDocuments(
         DATABASE_ID,
         SUBMISSIONS_COLLECTION,
         queries
       );
       
-      console.log(`[useSubmissions] Encontradas ${response.documents.length} submissões.`);
+      logger.data.load('submissões', response.documents.length);
       setSubmissions(response.documents as unknown as Submission[]);
     } catch (error: any) {
-      console.error('[useSubmissions] Erro ao buscar submissões:', error);
+      logger.api.error('submissões', 'Falha na busca');
       setError(error.message);
     } finally {
       setLoading(false);
@@ -127,9 +124,10 @@ export function useSubmissions() {
       
       // Re-fetch para atualizar a lista
       await fetchSubmissions();
+      logger.data.save('submissão');
       return submission;
     } catch (error: any) {
-      console.error('[useSubmissions] Erro ao criar submissão:', error);
+      logger.form.error('submissão', error.message);
       throw new Error(error.message);
     }
   };

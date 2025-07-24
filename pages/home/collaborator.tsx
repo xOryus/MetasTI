@@ -14,6 +14,7 @@ import { useSubmissions } from '@/hooks/useSubmissions';
 import { useSectorGoals } from '@/hooks/useSectorGoals';
 import { format, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isWithinInterval, isSameDay } from 'date-fns';
 import { Target, TrendingUp, Calendar, Award } from 'lucide-react';
+import { logger } from '@/lib/logger';
 
 export default function CollaboratorHome() {
   const { isAuthenticated, profile, logout, loading: authLoading } = useAuth();
@@ -45,7 +46,7 @@ export default function CollaboratorHome() {
   useEffect(() => {
     if (profile?.sector) {
       fetchActiveGoalsBySector(profile.sector).catch((error) => {
-        console.warn('Erro ao buscar metas do setor:', error);
+        logger.api.error('metas do setor', 'Falha na requisição');
       });
     }
   }, [profile?.sector, fetchActiveGoalsBySector]);
@@ -158,12 +159,14 @@ export default function CollaboratorHome() {
     try {
       setSubmitLoading(true);
       setSubmitError(null);
+      logger.form.submit('checklist');
       
       await createSubmission(profile.$id, answers, observation, printFile);
       
-      // Sucesso - pode mostrar uma notificação
+      logger.form.success('checklist');
       alert('Checklist enviado com sucesso!');
     } catch (error: any) {
+      logger.form.error('checklist', error.message);
       setSubmitError(error.message);
     } finally {
       setSubmitLoading(false);
@@ -172,10 +175,11 @@ export default function CollaboratorHome() {
 
   const handleLogout = async () => {
     try {
+      logger.ui.interaction('logout');
       await logout();
       router.push('/login');
     } catch (error) {
-      console.error('Erro ao fazer logout:', error);
+      logger.auth.error('Logout falhou');
     }
   };
 

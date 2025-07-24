@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { databases, DATABASE_ID, SECTOR_GOALS_COLLECTION } from '@/lib/appwrite';
 import { Query } from 'appwrite';
 import type { SectorGoal, Sector, GoalType, GoalPeriod } from '@/lib/appwrite';
+import { logger } from '@/lib/logger';
 
 export interface CreateSectorGoalData {
   title: string;
@@ -35,7 +36,7 @@ export function useSectorGoals() {
       );
       setGoals(response.documents as unknown as SectorGoal[]);
     } catch (err) {
-      console.error('Erro ao buscar sector goals:', err);
+      logger.api.error('sector-goals', `Erro ao buscar metas: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
       
       // Verificar se é erro de atributo não encontrado
       if (err instanceof Error && err.message.includes('Attribute not found')) {
@@ -64,7 +65,7 @@ export function useSectorGoals() {
       );
       setGoals(response.documents as unknown as SectorGoal[]);
     } catch (err) {
-      console.error('Erro ao buscar goals ativos:', err);
+      logger.api.error('sector-goals', `Erro ao buscar goals ativos: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
       throw err;
     }
   };
@@ -83,7 +84,7 @@ export function useSectorGoals() {
       
       setGoals(response.documents as unknown as SectorGoal[]);
     } catch (err) {
-      console.error('Erro ao buscar goals do setor:', err);
+      logger.api.error('sector-goals', `Erro ao buscar goals do setor: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
       
       // Se falhar, tentar buscar todas
       try {
@@ -113,7 +114,7 @@ export function useSectorGoals() {
       setGoals(prev => [...prev, newGoal]);
       return newGoal;
     } catch (err) {
-      console.error('Erro ao criar sector goal:', err);
+      logger.api.error('sector-goals', `Erro ao criar meta: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
       setError('Erro ao criar meta do setor');
       throw err;
     } finally {
@@ -138,7 +139,7 @@ export function useSectorGoals() {
       ));
       return updatedGoal;
     } catch (err) {
-      console.error('Erro ao atualizar sector goal:', err);
+      logger.api.error('sector-goals', `Erro ao atualizar meta: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
       setError('Erro ao atualizar meta do setor');
       throw err;
     } finally {
@@ -158,7 +159,7 @@ export function useSectorGoals() {
       );
       setGoals(prev => prev.filter(goal => goal.$id !== goalId));
     } catch (err) {
-      console.error('Erro ao deletar sector goal:', err);
+      logger.api.error('sector-goals', `Erro ao deletar meta: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
       setError('Erro ao deletar meta do setor');
       throw err;
     } finally {
