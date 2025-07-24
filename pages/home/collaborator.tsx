@@ -50,12 +50,28 @@ export default function CollaboratorHome() {
     }
   }, [profile?.sector, fetchActiveGoalsBySector]);
 
-  // Converter metas do setor para formato de checklist
-  const checklistGoals = sectorGoals.map(goal => ({
-    id: goal.$id!,
-    label: goal.title,
-    required: goal.type !== 'boolean_checklist'
-  }));
+  // Converter metas do setor para formato de checklist com títulos e descrições
+  const checklistGoals = sectorGoals.flatMap(goal => {
+    if (goal.type === 'boolean_checklist' && goal.checklistItems) {
+      // Para metas do tipo boolean_checklist, expandir cada item da lista
+      return goal.checklistItems.map((item, index) => ({
+        id: `${goal.$id}-${index}`,
+        label: item,
+        goalTitle: goal.title,
+        goalDescription: goal.description,
+        required: true
+      }));
+    } else {
+      // Para outros tipos de metas, criar um item único
+      return [{
+        id: goal.$id!,
+        label: goal.title,
+        goalTitle: goal.title,
+        goalDescription: goal.description,
+        required: goal.type !== 'boolean_checklist'
+      }];
+    }
+  });
 
   // Cálculos de performance baseados nas submissões reais
   const calculateWeeklyCompletion = (weekStart: Date) => {
@@ -251,7 +267,7 @@ export default function CollaboratorHome() {
                 ) : !hasSubmittedToday ? (
                   <ChecklistForm
                     items={checklistGoals}
-                    onSubmit={handleSubmit}
+                    onSubmitAction={handleSubmit}
                     loading={submitLoading}
                     error={submitError}
                   />

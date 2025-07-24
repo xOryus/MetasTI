@@ -18,17 +18,21 @@ import { Upload } from 'lucide-react';
 interface ChecklistItem {
   id: string;
   label: string;
+  goalId?: string;
+  goalTitle?: string;
+  goalDescription?: string;
+  required?: boolean;
 }
 
 interface ChecklistFormProps {
   items: ChecklistItem[];
-  onSubmit: (answers: Record<string, boolean>, observation: string, printFile: File) => Promise<void>;
+  onSubmitAction: (answers: Record<string, boolean>, observation: string, printFile: File) => Promise<void>;
   loading?: boolean;
   error?: string | null;
   disabled?: boolean;
 }
 
-export function ChecklistForm({ items, onSubmit, loading, error, disabled }: ChecklistFormProps) {
+export function ChecklistForm({ items, onSubmitAction, loading, error, disabled }: ChecklistFormProps) {
   const [answers, setAnswers] = useState<Record<string, boolean>>({});
   const [observation, setObservation] = useState('');
   const [printFile, setPrintFile] = useState<File | null>(null);
@@ -54,7 +58,7 @@ export function ChecklistForm({ items, onSubmit, loading, error, disabled }: Che
       return;
     }
     
-    await onSubmit(answers, observation, printFile);
+    await onSubmitAction(answers, observation, printFile);
     
     // Reset form
     setAnswers({});
@@ -66,11 +70,19 @@ export function ChecklistForm({ items, onSubmit, loading, error, disabled }: Che
   const totalCount = items.length;
   const completionPercentage = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
 
+  // Obter título e descrição da primeira meta (assumindo que todas são da mesma meta para checklists)
+  const firstItem = items[0];
+  const metaTitle = firstItem?.goalTitle || 'Checklist Diário';
+  const metaDescription = firstItem?.goalDescription;
+
   if (disabled) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Checklist Diário</CardTitle>
+          <CardTitle>{metaTitle}</CardTitle>
+          {metaDescription && (
+            <p className="text-sm text-muted-foreground mt-1">{metaDescription}</p>
+          )}
         </CardHeader>
         <CardContent>
           <Alert>
@@ -85,30 +97,115 @@ export function ChecklistForm({ items, onSubmit, loading, error, disabled }: Che
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Checklist Diário</CardTitle>
-        <div className="text-sm text-gray-600">
-          Progresso: {completedCount}/{totalCount} ({completionPercentage.toFixed(1)}%)
+      <CardHeader className="pb-4">
+        <div className="space-y-3">
+          <div>
+            <CardTitle className="text-xl">{metaTitle}</CardTitle>
+            {metaDescription && (
+              <p className="text-sm text-muted-foreground mt-1">{metaDescription}</p>
+            )}
+          </div>
+          
+          {/* Indicador de progresso minimalista */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Progresso</span>
+              <span className="font-medium">{completedCount}/{totalCount}</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div 
+                className="bg-blue-600 h-2 rounded-full transition-all duration-300 ease-in-out"
+                style={{ width: `${completionPercentage}%` }}
+              />
+            </div>
+            {completionPercentage === 100 && (
+              <div className="flex items-center gap-1 text-green-600 text-sm font-medium">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+                Checklist completo!
+              </div>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-4">
-            {items.map((item) => (
-              <div key={item.id} className="flex items-center space-x-2">
-                <Checkbox
-                  id={item.id}
-                  checked={answers[item.id] || false}
-                  onCheckedChange={(checked) => handleCheckboxChange(item.id, checked === true)}
-                />
-                <Label 
-                  htmlFor={item.id} 
-                  className="text-sm font-normal cursor-pointer"
-                >
-                  {item.label}
-                </Label>
-              </div>
-            ))}
+          <div className="space-y-6">
+            {(() => {
+              // Agrupar itens por goalTitle quando disponível
+              const groupedItems = items.reduce((groups, item) => {
+                const groupKey = item.goalTitle || 'default';
+                if (!groups[groupKey]) {
+                  groups[groupKey] = [];
+                }
+                groups[groupKey].push(item);
+                return groups;
+              }, {} as Record<string, ChecklistItem[]>);
+
+              return Object.entries(groupedItems).map(([goalTitle, groupItems]) => (
+                <div key={goalTitle} className="space-y-4">
+                  {/* Para múltiplos itens de uma meta - sem mostrar título/descrição novamente */}
+                  {goalTitle !== 'default' && groupItems.length > 1 && (
+                    <div className="space-y-3">
+                      {groupItems.map((item) => (
+                        <div key={item.id} className="group hover:bg-gray-50 p-3 rounded-lg border transition-colors">
+                          <div className="flex items-center space-x-3">
+                            <Checkbox
+                              id={item.id}
+                              checked={answers[item.id] || false}
+                              onCheckedChange={(checked) => handleCheckboxChange(item.id, checked === true)}
+                              className="h-5 w-5"
+                            />
+                            <Label 
+                              htmlFor={item.id} 
+                              className="text-sm font-medium cursor-pointer flex-1 group-hover:text-blue-600 transition-colors"
+                            >
+                              {item.label}
+                            </Label>
+                            {answers[item.id] && (
+                              <div className="text-green-600">
+                                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {/* Para itens únicos - sem mostrar título/descrição novamente */}
+                  {(goalTitle === 'default' || groupItems.length === 1) && 
+                    groupItems.map((item) => (
+                      <div key={item.id} className="group hover:bg-gray-50 p-3 rounded-lg border transition-colors">
+                        <div className="flex items-center space-x-3">
+                          <Checkbox
+                            id={item.id}
+                            checked={answers[item.id] || false}
+                            onCheckedChange={(checked) => handleCheckboxChange(item.id, checked === true)}
+                            className="h-5 w-5"
+                          />
+                          <Label 
+                            htmlFor={item.id} 
+                            className="text-sm font-medium cursor-pointer flex-1 group-hover:text-blue-600 transition-colors"
+                          >
+                            {item.label}
+                          </Label>
+                          {answers[item.id] && (
+                            <div className="text-green-600">
+                              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  }
+                </div>
+              ));
+            })()}
           </div>
           
           <div className="space-y-2">

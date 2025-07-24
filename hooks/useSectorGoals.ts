@@ -80,6 +80,7 @@ export function useSectorGoals() {
           Query.equal('isActive', true)
         ]
       );
+      
       setGoals(response.documents as unknown as SectorGoal[]);
     } catch (err) {
       console.error('Erro ao buscar goals do setor:', err);
