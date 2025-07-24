@@ -33,7 +33,7 @@ export const sectorDisplayNames: Record<Sector, string> = {
 
 export const goalTypeDisplayNames: Record<GoalType, string> = {
   [GoalType.NUMERIC]: 'Numérico (Quantidade)',
-  [GoalType.BOOLEAN_CHECKLIST]: 'Lista de Verificação (Múltiplos Itens)',
+  [GoalType.BOOLEAN_CHECKLIST]: 'Lista de Verificação',
   [GoalType.TASK_COMPLETION]: 'Conclusão de Tarefa (Sim/Não)',
   [GoalType.PERCENTAGE]: 'Porcentagem (%)'
 };
@@ -128,18 +128,18 @@ export function GoalForm({ formData, handleInputChange, isEdit = false }: GoalFo
                     onClick={() => handleInputChange('type', key)}
                   >
                     <Card 
-                      className={`border-2 ${
+                      className={`border-2 h-full min-h-[120px] ${
                         formData.type === key ? "border-primary" : "border-muted"
                       }`}
                     >
-                      <CardContent className="flex flex-col items-center justify-between p-6">
+                      <CardContent className="flex flex-col items-center justify-center p-6 h-full">
                         <div className="text-center">
                           <div className="space-y-1">
-                            <p className="text-base font-medium">{name}</p>
-                            <p className="text-sm text-muted-foreground">
+                            <p className="text-base font-medium leading-tight">{name}</p>
+                            <p className="text-sm text-muted-foreground leading-tight">
                               {key === GoalType.NUMERIC && "Meta baseada em valores numéricos"}
                               {key === GoalType.PERCENTAGE && "Meta baseada em porcentagem"}
-                              {key === GoalType.BOOLEAN_CHECKLIST && "Meta com itens para verificação"}
+                              {key === GoalType.BOOLEAN_CHECKLIST && "Meta com multiplos itens para verificação"}
                               {key === GoalType.TASK_COMPLETION && "Meta de conclusão simples (sim/não)"}
                             </p>
                           </div>

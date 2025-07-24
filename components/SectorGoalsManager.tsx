@@ -244,7 +244,11 @@ export function SectorGoalsManager() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filteredGoals.map(goal => (
-            <Card key={goal.$id} className="overflow-hidden transition-shadow hover:shadow-md">
+            <Card
+              key={goal.$id}
+              className="overflow-hidden transition-shadow hover:shadow-md flex flex-col h-full min-h-[260px]"
+              style={{ minHeight: 260 }}
+            >
               <CardHeader>
                 <div className="flex justify-between items-start">
                   <div>
