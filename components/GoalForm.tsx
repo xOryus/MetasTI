@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -63,17 +63,23 @@ interface GoalFormProps {
   formData: GoalFormData;
   handleInputChange: (field: keyof GoalFormData, value: any) => void;
   isEdit?: boolean;
+  onStepChange?: (step: "type" | "details") => void;
 }
 
 /**
  * Componente de formulário para criação e edição de metas
  * Implementa um fluxo em etapas para melhorar a experiência do usuário
  */
-export function GoalForm({ formData, handleInputChange, isEdit = false }: GoalFormProps) {
+export function GoalForm({ formData, handleInputChange, isEdit = false, onStepChange }: GoalFormProps) {
   // Estado para controlar a etapa atual do formulário (tipo ou detalhes)
   const [step, setStep] = useState<"type" | "details">(
     formData.type ? "details" : "type"
   );
+
+  // Notificar o componente pai sobre mudanças de etapa
+  useEffect(() => {
+    onStepChange?.(step);
+  }, [step, onStepChange]);
 
   // Função para avançar para a etapa de detalhes
   const handleTypeNext = () => {
@@ -108,71 +114,109 @@ export function GoalForm({ formData, handleInputChange, isEdit = false }: GoalFo
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      {/* Indicador de Progresso */}
+      <div className="flex items-center justify-center space-x-4">
+        <div className={`flex items-center space-x-2 ${step === "type" ? "text-primary" : "text-muted-foreground"}`}>
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+            step === "type" ? "bg-primary text-primary-foreground" : 
+            formData.type ? "bg-green-500 text-white" : "bg-muted text-muted-foreground"
+          }`}>
+            {formData.type && step === "details" ? "✓" : "1"}
+          </div>
+          <span className="text-sm font-medium">Tipo</span>
+        </div>
+        <div className={`w-12 h-px ${formData.type ? "bg-primary" : "bg-muted"}`}></div>
+        <div className={`flex items-center space-x-2 ${step === "details" ? "text-primary" : "text-muted-foreground"}`}>
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+            step === "details" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+          }`}>
+            2
+          </div>
+          <span className="text-sm font-medium">Detalhes</span>
+        </div>
+      </div>
+
       {/* Etapa 1: Seleção do tipo de meta */}
       {step === "type" && (
-        <>
-          <div className="space-y-4">
-            <Label className="text-base font-medium">Escolha o tipo de meta</Label>
-            <RadioGroup
-              value={formData.type}
-              onValueChange={(value) => handleInputChange('type', value)}
-              className="grid grid-cols-1 gap-4 md:grid-cols-2"
-            >
-              {Object.entries(goalTypeDisplayNames).map(([key, name]) => (
-                <div key={key} className="flex items-center">
-                  <RadioGroupItem value={key} id={`type-${key}`} className="sr-only" />
-                  <Label
-                    htmlFor={`type-${key}`}
-                    className="w-full cursor-pointer"
-                    onClick={() => handleInputChange('type', key)}
-                  >
-                    <Card 
-                      className={`border-2 h-full min-h-[120px] ${
-                        formData.type === key ? "border-primary" : "border-muted"
-                      }`}
-                    >
-                      <CardContent className="flex flex-col items-center justify-center p-6 h-full">
-                        <div className="text-center">
-                          <div className="space-y-1">
-                            <p className="text-base font-medium leading-tight">{name}</p>
-                            <p className="text-sm text-muted-foreground leading-tight">
-                              {key === GoalType.NUMERIC && "Meta baseada em valores numéricos"}
-                              {key === GoalType.PERCENTAGE && "Meta baseada em porcentagem"}
-                              {key === GoalType.BOOLEAN_CHECKLIST && "Meta com multiplos itens para verificação"}
-                              {key === GoalType.TASK_COMPLETION && "Meta de conclusão simples (sim/não)"}
-                            </p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </Label>
-                </div>
-              ))}
-            </RadioGroup>
+        <div className="space-y-6">
+          <div className="text-center space-y-2">
+            <h3 className="text-lg font-semibold">Escolha o tipo de meta</h3>
+            <p className="text-sm text-muted-foreground">Selecione como você deseja medir o progresso</p>
           </div>
           
+          <RadioGroup
+            value={formData.type}
+            onValueChange={(value) => handleInputChange('type', value)}
+            className="grid grid-cols-1 gap-4 md:grid-cols-2"
+          >
+            {Object.entries(goalTypeDisplayNames).map(([key, name]) => (
+              <div key={key} className="flex items-center">
+                <RadioGroupItem value={key} id={`type-${key}`} className="sr-only" />
+                <Label
+                  htmlFor={`type-${key}`}
+                  className="w-full cursor-pointer"
+                >
+                  <Card 
+                    className={`border-2 h-full min-h-[120px] transition-all duration-200 hover:shadow-md ${
+                      formData.type === key 
+                        ? "border-primary shadow-lg ring-2 ring-primary/20" 
+                        : "border-muted hover:border-primary/50"
+                    }`}
+                  >
+                    <CardContent className="flex flex-col items-center justify-center p-6 h-full">
+                      <div className="text-center">
+                        <div className="space-y-1">
+                          <p className="text-base font-medium leading-tight">{name}</p>
+                          <p className="text-sm text-muted-foreground leading-tight">
+                            {key === GoalType.NUMERIC && "Meta baseada em valores numéricos"}
+                            {key === GoalType.PERCENTAGE && "Meta baseada em porcentagem"}
+                            {key === GoalType.BOOLEAN_CHECKLIST && "Meta com multiplos itens para verificação"}
+                            {key === GoalType.TASK_COMPLETION && "Meta de conclusão simples (sim/não)"}
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Label>
+              </div>
+            ))}
+          </RadioGroup>
+          
+          {/* Botão Próximo */}
           <div className="flex justify-end pt-4">
             <Button 
               type="button" 
               onClick={handleTypeNext}
               disabled={!formData.type}
+              className="min-w-[100px]"
             >
-              Próximo
+              Próximo →
             </Button>
           </div>
-        </>
+        </div>
       )}
 
       {/* Etapa 2: Detalhes da meta */}
       {step === "details" && (
-        <>
+        <div className="space-y-6">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-medium">
-              {isEdit ? "Editar Meta" : "Nova Meta"}: {goalTypeDisplayNames[formData.type as GoalType]}
-            </h3>
-            <Button type="button" variant="outline" size="sm" onClick={handleBackToType}>
-              Alterar tipo
+            <div>
+              <h3 className="text-lg font-semibold">
+                {isEdit ? "Editar Meta" : "Configurar Meta"}
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Tipo: {goalTypeDisplayNames[formData.type as GoalType]}
+              </p>
+            </div>
+            <Button 
+              type="button" 
+              variant="outline" 
+              size="sm" 
+              onClick={handleBackToType}
+              className="flex items-center gap-2"
+            >
+              ← Alterar tipo
             </Button>
           </div>
 
@@ -202,19 +246,15 @@ export function GoalForm({ formData, handleInputChange, isEdit = false }: GoalFo
             </div>
           </div>
 
-          {/* Descrição geral (não mostrada para metas de lista de verificação) */}
-          {formData.type !== GoalType.BOOLEAN_CHECKLIST && (
+          {/* Descrição geral (apenas para tipos que não têm campo específico) */}
+          {formData.type === GoalType.PERCENTAGE && (
             <div className="space-y-2">
-              <Label htmlFor="description">
-                {formData.type === GoalType.TASK_COMPLETION ? 'Descrição Detalhada da Tarefa' : 'Descrição'}
-              </Label>
+              <Label htmlFor="description">Descrição</Label>
               <Textarea
                 id="description"
                 value={formData.description}
                 onChange={(e) => handleInputChange('description', e.target.value)}
-                placeholder={formData.type === GoalType.TASK_COMPLETION ? 
-                  "Descreva detalhadamente a tarefa que precisa ser concluída..." : 
-                  "Descrição detalhada da meta..."}
+                placeholder="Descrição detalhada da meta..."
                 className="min-h-20"
               />
             </div>
@@ -268,39 +308,34 @@ export function GoalForm({ formData, handleInputChange, isEdit = false }: GoalFo
           {/* Campo para Conclusão de Tarefa */}
           {formData.type === GoalType.TASK_COMPLETION && (
             <div className="space-y-2">
-              <Label htmlFor="unitTask">Descrição da Tarefa * (máx. 100 caracteres)</Label>
+              <Label htmlFor="taskDescription">Descrição da Tarefa * (máx. 100 caracteres)</Label>
               <Input
-                id="unitTask"
-                value={formData.unit}
-                onChange={(e) => handleInputChange('unit', e.target.value.slice(0, 100))}
+                id="taskDescription"
+                value={formData.description}
+                onChange={(e) => handleInputChange('description', e.target.value.slice(0, 100))}
                 placeholder="Ex: Relatório mensal de vendas"
                 className="text-sm"
                 maxLength={100}
               />
               <p className="text-sm text-muted-foreground">
-                {formData.unit.length}/100 caracteres - Descreva brevemente esta tarefa
+                {formData.description.length}/100 caracteres - Descreva brevemente esta tarefa
               </p>
-              <div className="p-3 bg-blue-50 rounded-lg mt-2">
-                <p className="text-xs text-blue-700">
-                  Nota: Use o campo "Descrição Detalhada da Tarefa" acima para adicionar mais informações.
-                </p>
-              </div>
             </div>
           )}
 
-          {/* Campo de unidade para tipos numéricos */}
+          {/* Campo específico para metas numéricas */}
           {formData.type === GoalType.NUMERIC && (
             <div className="space-y-2">
-              <Label htmlFor="unitNumeric">Descrição da Unidade (máx. 100 caracteres)</Label>
+              <Label htmlFor="numericDescription">Descrição da Meta * (máx. 100 caracteres)</Label>
               <Input
-                id="unitNumeric"
-                value={formData.unit}
-                onChange={(e) => handleInputChange('unit', e.target.value.slice(0, 100))}
+                id="numericDescription"
+                value={formData.description}
+                onChange={(e) => handleInputChange('description', e.target.value.slice(0, 100))}
                 placeholder="Ex: vendas realizadas, chamados atendidos, peças produzidas"
                 maxLength={100}
               />
               <p className="text-sm text-muted-foreground">
-                {formData.unit.length}/100 caracteres - Opcional: descreva como será medido
+                {formData.description.length}/100 caracteres - Descreva como será medido
               </p>
             </div>
           )}
@@ -330,7 +365,7 @@ export function GoalForm({ formData, handleInputChange, isEdit = false }: GoalFo
             />
             <Label htmlFor="isActive">Meta ativa</Label>
           </div>
-        </>
+        </div>
       )}
     </div>
   );

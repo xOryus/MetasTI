@@ -37,6 +37,7 @@ export function SectorGoalsManager() {
   const [editingGoal, setEditingGoal] = useState<SectorGoal | null>(null);
   const [formData, setFormData] = useState<GoalFormData>(initialFormData);
   const [selectedSectorFilter, setSelectedSectorFilter] = useState<Sector | 'all'>('all');
+  const [currentStep, setCurrentStep] = useState<"type" | "details">("type");
 
   const filteredGoals = selectedSectorFilter === 'all' 
     ? goals 
@@ -172,6 +173,7 @@ export function SectorGoalsManager() {
 
   const resetForm = () => {
     setFormData(initialFormData);
+    setCurrentStep("type");
   };
 
   return (
@@ -197,13 +199,19 @@ export function SectorGoalsManager() {
                 Configure uma nova meta para um setor específico
               </DialogDescription>
             </DialogHeader>
-            <GoalForm formData={formData} handleInputChange={handleInputChange} />
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-                Cancelar
-              </Button>
-              <Button onClick={handleCreateGoal}>Criar Meta</Button>
-            </DialogFooter>
+            <GoalForm 
+              formData={formData} 
+              handleInputChange={handleInputChange}
+              onStepChange={setCurrentStep}
+            />
+            {currentStep === "details" && (
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button onClick={handleCreateGoal}>Criar Meta</Button>
+              </DialogFooter>
+            )}
           </DialogContent>
         </Dialog>
       </div>
