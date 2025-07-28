@@ -18,7 +18,7 @@ import { format, subDays, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfM
 import { 
   Users, TrendingUp, Target, Award, BarChart3, Calendar, 
   Activity, PieChart, Trophy, TrendingDown, Eye, FileImage, User, Download,
-  AlertTriangle, Clock, CheckCircle, XCircle, Star, Zap
+  AlertTriangle, Clock, CheckCircle, XCircle, Star, Zap, ChevronDown, ChevronUp, Minimize2, Maximize2
 } from 'lucide-react';
 import { logger } from '@/lib/logger';
 import { Role } from '@/lib/roles';
@@ -98,6 +98,9 @@ export default function ManagerDashboard() {
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
   const [collaboratorRankings, setCollaboratorRankings] = useState<CollaboratorRanking[]>([]);
   const [actionCards, setActionCards] = useState<ActionCard[]>([]);
+  
+  // Estado para controlar minimização dos alertas
+  const [isAlertsMinimized, setIsAlertsMinimized] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month'>('week');
 
   // Cálculo das métricas principais do dashboard
@@ -608,33 +611,34 @@ export default function ManagerDashboard() {
   const tendenciaCrescimento = generateTendenciaCrescimento();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-      {/* Header Profissional */}
-      <div className="bg-white/80 backdrop-blur-xl shadow-lg border-b border-gray-200/50 sticky top-0 z-50">
-        <div className="max-w-[1600px] mx-auto px-6 lg:px-12">
-          <div className="flex justify-between items-center py-6">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-                <BarChart3 className="w-6 h-6 text-white" />
+    <div className="min-h-screen bg-gray-50">
+      {/* Header Corporativo */}
+      <div className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
+        <div className="max-w-[1600px] mx-auto px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+                <BarChart3 className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-indigo-700 bg-clip-text text-transparent">
-                  Dashboard Avançado - {profile.sector}
+                <h1 className="text-lg font-semibold text-gray-900">
+                  Dashboard Gerencial - {profile.sector}
                 </h1>
-                <p className="text-gray-600 font-medium">
-                  Sistema Inteligente de Monitoramento Gerencial
+                <p className="text-xs text-gray-500">
+                  Sistema Inteligente de Monitoramento
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-4">
-              <div className="hidden md:flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
+              <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-green-50 rounded-full border border-green-200">
                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                <span className="text-sm font-medium text-gray-700">Sistema Ativo</span>
+                <span className="text-xs font-medium text-green-700">Sistema Ativo</span>
               </div>
               <Button 
                 onClick={handleLogout} 
                 variant="outline"
-                className="border-gray-300 hover:border-gray-400 hover:bg-gray-50 transition-all duration-200"
+                size="sm"
+                className="border-gray-200 hover:bg-gray-50 text-sm"
               >
                 Sair
               </Button>
@@ -643,7 +647,7 @@ export default function ManagerDashboard() {
         </div>
       </div>
 
-      <div className="max-w-[1600px] mx-auto px-6 lg:px-12 py-8">
+      <div className="max-w-[1600px] mx-auto px-6 lg:px-8 py-6">
         
         {/* Cards de Ação Rápida - Layout Profissional */}
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-8 mb-12">
@@ -719,95 +723,126 @@ export default function ManagerDashboard() {
           })}
         </div>
 
-        {/* Alertas Inteligentes - Design Clean e Moderno */}
+        {/* Alertas Inteligentes - Design Corporativo */}
         {alerts.length > 0 && (
-          <div className="mb-12">
-            {/* Header simples e elegante */}
-            <div className="mb-6">
-              <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-                <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-red-500 rounded-lg flex items-center justify-center">
-                  <AlertTriangle className="w-4 h-4 text-white" />
-                </div>
-                Alertas Inteligentes
-              </h2>
-              <p className="text-gray-600 mt-1 ml-11">
-                Monitoramento proativo para tomada de decisão
-              </p>
-            </div>
-            
-            {/* Grid de alertas com design clean */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {alerts.map((alert, index) => (
-                <div 
-                  key={index} 
-                  className={`relative p-6 rounded-2xl border-l-4 bg-white shadow-sm hover:shadow-md transition-all duration-300 ${
-                    alert.type === 'risk' ? 'border-l-red-400 bg-red-50/30' :
-                    alert.type === 'warning' ? 'border-l-yellow-400 bg-yellow-50/30' :
-                    'border-l-green-400 bg-green-50/30'
-                  }`}
-                >
-                  {/* Badge de contagem */}
-                  <div className="absolute -top-2 -right-2">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-md ${
-                      alert.type === 'risk' ? 'bg-red-500' :
-                      alert.type === 'warning' ? 'bg-yellow-500' :
-                      'bg-green-500'
-                    }`}>
-                      {alert.count}
-                    </div>
+          <div className="mb-8">
+            <Card className="border border-gray-200 shadow-sm overflow-hidden">
+              {/* Cabeçalho com toggle - estilo profissional */}
+              <div 
+                className="flex items-center justify-between px-6 py-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors"
+                onClick={() => setIsAlertsMinimized(!isAlertsMinimized)}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="bg-red-100 p-2 rounded-md">
+                    <AlertTriangle className="w-5 h-5 text-red-600" />
                   </div>
-                  
-                  <div className="space-y-3">
-                    {/* Ícone e título */}
-                    <div className="flex items-start gap-3">
-                      <div className={`p-2 rounded-lg ${
-                        alert.type === 'risk' ? 'bg-red-100' :
-                        alert.type === 'warning' ? 'bg-yellow-100' :
-                        'bg-green-100'
-                      }`}>
-                        {alert.type === 'risk' ? <XCircle className="w-5 h-5 text-red-600" /> :
-                         alert.type === 'warning' ? <Clock className="w-5 h-5 text-yellow-600" /> :
-                         <CheckCircle className="w-5 h-5 text-green-600" />}
-                      </div>
-                      <div>
-                        <h4 className={`font-semibold ${
-                          alert.type === 'risk' ? 'text-red-900' :
-                          alert.type === 'warning' ? 'text-yellow-900' :
-                          'text-green-900'
-                        }`}>
-                          {alert.title}
-                        </h4>
-                      </div>
-                    </div>
-                    
-                    {/* Descrição */}
-                    <p className={`text-sm leading-relaxed ${
-                      alert.type === 'risk' ? 'text-red-700' :
-                      alert.type === 'warning' ? 'text-yellow-700' :
-                      'text-green-700'
-                    }`}>
-                      {alert.description}
-                    </p>
-                    
-                    {/* Botão de ação (se existir) */}
-                    {alert.action && (
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className={`w-full mt-4 font-medium transition-all duration-200 ${
-                          alert.type === 'risk' ? 'border-red-200 text-red-700 hover:bg-red-50 hover:border-red-300' :
-                          alert.type === 'warning' ? 'border-yellow-200 text-yellow-700 hover:bg-yellow-50 hover:border-yellow-300' :
-                          'border-green-200 text-green-700 hover:bg-green-50 hover:border-green-300'
+                  <div>
+                    <h2 className="text-base font-medium text-gray-900">Alertas Inteligentes</h2>
+                    <p className="text-sm text-gray-500">Monitoramento proativo para tomada de decisão</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center">
+                  <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 mr-3">
+                    {alerts.length} {alerts.length === 1 ? 'alerta' : 'alertas'}
+                  </Badge>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="p-1 h-8 w-8"
+                  >
+                    {isAlertsMinimized ? (
+                      <ChevronDown className="h-4 w-4" />
+                    ) : (
+                      <ChevronUp className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+              
+              {/* Conteúdo colapsável */}
+              <div 
+                className={`transition-all duration-300 ease-in-out overflow-hidden ${
+                  isAlertsMinimized ? 'max-h-0 opacity-0' : 'max-h-[2000px] opacity-100'
+                }`}
+              >
+                <div className="p-5">
+                  {/* Alerta resumido em formato horizontal - mais compacto e profissional */}
+                  <div className="space-y-4">
+                    {alerts.map((alert, index) => (
+                      <div 
+                        key={index} 
+                        className={`flex items-center border rounded-lg shadow-sm overflow-hidden ${
+                          alert.type === 'risk' ? 'border-red-200 bg-white' :
+                          alert.type === 'warning' ? 'border-amber-200 bg-white' :
+                          'border-green-200 bg-white'
                         }`}
                       >
-                        {alert.action}
-                        <TrendingUp className="w-4 h-4 ml-2" />
-                      </Button>
-                    )}
+                        {/* Indicador de tipo (barra vertical) */}
+                        <div 
+                          className={`self-stretch w-1.5 ${
+                            alert.type === 'risk' ? 'bg-red-500' :
+                            alert.type === 'warning' ? 'bg-amber-500' :
+                            'bg-green-500'
+                          }`}
+                        />
+                        
+                        {/* Ícone */}
+                        <div className={`p-4 ${
+                          alert.type === 'risk' ? 'text-red-600' :
+                          alert.type === 'warning' ? 'text-amber-600' :
+                          'text-green-600'
+                        }`}>
+                          {alert.type === 'risk' ? <XCircle className="h-6 w-6" /> :
+                           alert.type === 'warning' ? <Clock className="h-6 w-6" /> :
+                           <CheckCircle className="h-6 w-6" />}
+                        </div>
+                        
+                        {/* Conteúdo do alerta */}
+                        <div className="py-4 px-2 flex-1">
+                          <div className="flex items-center justify-between">
+                            <h4 className={`font-medium ${
+                              alert.type === 'risk' ? 'text-red-900' :
+                              alert.type === 'warning' ? 'text-amber-900' :
+                              'text-green-900'
+                            }`}>
+                              {alert.title}
+                            </h4>
+                            <Badge className={`ml-2 ${
+                              alert.type === 'risk' ? 'bg-red-100 text-red-800 hover:bg-red-200' :
+                              alert.type === 'warning' ? 'bg-amber-100 text-amber-800 hover:bg-amber-200' :
+                              'bg-green-100 text-green-800 hover:bg-green-200'
+                            }`}>
+                              {alert.count}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-gray-600 mt-1 pr-4">
+                            {alert.description}
+                          </p>
+                        </div>
+                        
+                        {/* Botão de ação */}
+                        {alert.action && (
+                          <div className="p-4 border-l border-gray-100">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className={`whitespace-nowrap ${
+                                alert.type === 'risk' ? 'text-red-700 hover:text-red-800 hover:bg-red-50' :
+                                alert.type === 'warning' ? 'text-amber-700 hover:text-amber-800 hover:bg-amber-50' :
+                                'text-green-700 hover:text-green-800 hover:bg-green-50'
+                              }`}
+                            >
+                              {alert.action}
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </div>
-              ))}
-            </div>
+              </div>
+            </Card>
           </div>
         )}
 
