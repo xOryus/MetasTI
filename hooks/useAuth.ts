@@ -85,6 +85,7 @@ export function useAuth() {
         const adminProfile: UserProfile = {
           $id: 'admin',
           userId: 'admin',
+          name: 'Administrador',
           sector: Sector.TI,
           role: Role.ADMIN,
           $createdAt: new Date().toISOString(),
@@ -169,6 +170,7 @@ export function useAuth() {
           const adminProfile: UserProfile = {
             $id: 'admin',
             userId: 'admin',
+            name: 'Administrador',
             sector: Sector.TI,
             role: Role.ADMIN,
             $createdAt: new Date().toISOString(),

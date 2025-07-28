@@ -39,7 +39,6 @@ interface ExtendedUserProfile extends UserProfile {
   $id: string;
   $createdAt: string;
   $updatedAt: string;
-  name?: string;
   email?: string;
   isOrphan?: boolean;
   authExists?: boolean;
@@ -170,6 +169,7 @@ export default function AdminPanel() {
   };
 
   const handleUserSubmit = async (userData: {
+    name: string;
     email: string;
     password: string;
     sector: Sector;

@@ -308,44 +308,61 @@ export default function CollaboratorHome() {
                           </div>
                         </CardHeader>
                         <CardContent>
-                          {goal.type === 'numeric' && (
-                            <div className="space-y-3">
-                              <label className="block text-sm font-medium text-gray-700">
-                                Valor Atual:
-                              </label>
-                              <input
-                                type="number"
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                placeholder={`Meta: ${goal.targetValue}`}
-                                min="0"
-                              />
-                            </div>
-                          )}
-                          {goal.type === 'percentage' && (
-                            <div className="space-y-3">
-                              <label className="block text-sm font-medium text-gray-700">
-                                Porcentagem Atual (%):
-                              </label>
-                              <input
-                                type="number"
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                placeholder={`Meta: ${goal.targetValue}%`}
-                                min="0"
-                                max="100"
-                              />
-                            </div>
-                          )}
-                          {goal.type === 'task_completion' && (
-                            <div className="space-y-3">
-                              <label className="flex items-center space-x-2">
+                          <div className="space-y-4">
+                            {goal.type === 'numeric' && (
+                              <div className="space-y-3">
+                                <label className="block text-sm font-medium text-gray-700">
+                                  Valor Atual:
+                                </label>
                                 <input
-                                  type="checkbox"
-                                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                  type="number"
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  placeholder={`Meta: ${goal.targetValue}`}
+                                  min="0"
                                 />
-                                <span className="text-sm text-gray-700">Tarefa concluída</span>
+                              </div>
+                            )}
+                            {goal.type === 'percentage' && (
+                              <div className="space-y-3">
+                                <label className="block text-sm font-medium text-gray-700">
+                                  Porcentagem Atual (%):
+                                </label>
+                                <input
+                                  type="number"
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  placeholder={`Meta: ${goal.targetValue}%`}
+                                  min="0"
+                                  max="100"
+                                />
+                              </div>
+                            )}
+                            {goal.type === 'task_completion' && (
+                              <div className="space-y-3">
+                                <label className="flex items-center space-x-2">
+                                  <input
+                                    type="checkbox"
+                                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                  />
+                                  <span className="text-sm text-gray-700">Tarefa concluída</span>
+                                </label>
+                              </div>
+                            )}
+                            
+                            {/* Campo de upload para cada meta individual */}
+                            <div className="pt-3 border-t border-gray-200">
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Comprovação desta meta:
                               </label>
+                              <input
+                                type="file"
+                                accept="image/*,.pdf,.doc,.docx"
+                                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 file:mr-4 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-sm file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                              />
+                              <p className="text-xs text-gray-500 mt-1">
+                                Formatos aceitos: Imagens, PDF, DOC, DOCX
+                              </p>
                             </div>
-                          )}
+                          </div>
                         </CardContent>
                       </Card>
                     ))}
@@ -366,22 +383,39 @@ export default function CollaboratorHome() {
                           </div>
                         </CardHeader>
                         <CardContent>
-                          <div className="space-y-2">
-                            {goal.items.map((item: any) => (
-                              <label key={item.id} className="flex items-center space-x-2">
-                                <input
-                                  type="checkbox"
-                                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                                />
-                                <span className="text-sm text-gray-700">{item.label}</span>
+                          <div className="space-y-4">
+                            <div className="space-y-2">
+                              {goal.items.map((item: any) => (
+                                <label key={item.id} className="flex items-center space-x-2">
+                                  <input
+                                    type="checkbox"
+                                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                  />
+                                  <span className="text-sm text-gray-700">{item.label}</span>
+                                </label>
+                              ))}
+                            </div>
+                            
+                            {/* Campo de upload para checklist */}
+                            <div className="pt-3 border-t border-gray-200">
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Comprovação deste checklist:
                               </label>
-                            ))}
+                              <input
+                                type="file"
+                                accept="image/*,.pdf,.doc,.docx"
+                                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 file:mr-4 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-sm file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
+                              />
+                              <p className="text-xs text-gray-500 mt-1">
+                                Formatos aceitos: Imagens, PDF, DOC, DOCX
+                              </p>
+                            </div>
                           </div>
                         </CardContent>
                       </Card>
                     ))}
 
-                    {/* Seção de Observações e Envio */}
+                    {/* Seção de Observações Gerais e Envio */}
                     <Card className="border border-gray-200 bg-gray-50">
                       <CardHeader>
                         <CardTitle className="text-lg font-semibold text-gray-800">
@@ -391,35 +425,29 @@ export default function CollaboratorHome() {
                       <CardContent className="space-y-4">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Observações:
+                            Observações Gerais (opcional):
                           </label>
                           <textarea
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             rows={3}
-                            placeholder="Descreva qualquer observação relevante..."
+                            placeholder="Adicione observações gerais sobre todas as metas do dia..."
                           />
-                        </div>
-                        
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Print de Comprovação:
-                          </label>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
+                          <p className="text-xs text-gray-500 mt-1">
+                            Use este campo para comentários que se aplicam a todas as metas
+                          </p>
                         </div>
                         
                         <Button 
                           className="w-full" 
                           disabled={submitLoading}
                         >
-                          {submitLoading ? 'Enviando...' : 'Enviar Checklist'}
+                          {submitLoading ? 'Enviando...' : 'Enviar Todas as Metas'}
                         </Button>
                         
                         {submitError && (
-                          <div className="text-red-600 text-sm">{submitError}</div>
+                          <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                            <p className="text-red-800 text-sm">{submitError}</p>
+                          </div>
                         )}
                       </CardContent>
                     </Card>

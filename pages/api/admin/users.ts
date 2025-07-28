@@ -38,7 +38,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             const authUser = await adminUsers.get(profile.userId);
             return {
               ...profile,
-              name: authUser.name || authUser.email?.split('@')[0] || 'Usuário',
+              name: profile.name || authUser.name || authUser.email?.split('@')[0] || 'Usuário',
               email: authUser.email || 'N/A',
               isOrphan: false,
               authExists: true
@@ -49,7 +49,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             // Marcar como órfão para destacar na interface
             return {
               ...profile,
-              name: '⚠️ Usuário órfão',
+              name: profile.name || '⚠️ Usuário órfão',
               email: 'Auth não encontrado',
               isOrphan: true,
               authExists: false,
@@ -72,7 +72,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
   } else if (req.method === 'POST') {
     try {
-      const { email, password, sector, role } = req.body;
+      const { email, password, sector, role, name } = req.body;
       
       // Verificar se já existe usuário com este email
       try {
@@ -89,12 +89,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       // Criar usuário no Appwrite Auth
+      const displayName = name || email.split('@')[0]; // Usar nome fornecido ou extrair do email
       const user = await adminUsers.create(
         ID.unique(),
         email,
         undefined, // phone
         password,
-        email.split('@')[0] // name
+        displayName // name
       );
       
       // Criar perfil do usuário
@@ -104,8 +105,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         ID.unique(),
         {
           userId: user.$id,
-          name: email.split('@')[0], // Extrair nome do email
-          email: email, // Campo email obrigatório
+          name: displayName, // Salvar o nome no perfil
           sector,
           role
         }
@@ -113,8 +113,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       
       res.status(201).json({ 
         message: 'Usuário criado com sucesso!',
-        user: { email: user.email, id: user.$id }, 
-        profile: { id: profile.$id, sector: profile.sector, role: profile.role }
+        user: { email: user.email, id: user.$id, name: displayName }, 
+        profile: { id: profile.$id, sector: profile.sector, role: profile.role, name: displayName }
       });
     } catch (error: any) {
       console.error('Erro ao criar usuário:', error);

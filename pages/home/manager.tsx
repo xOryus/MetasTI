@@ -3,11 +3,12 @@
  * Análises completas do setor com gráficos e métricas avançadas baseadas em dados reais
  */
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Chart } from '@/components/Chart';
 import ProofImageViewer from '@/components/ProofImageViewer';
 import { useAuth } from '@/hooks/useAuth';
@@ -16,10 +17,11 @@ import { useAllProfiles } from '@/hooks/useAllProfiles';
 import { format, subDays, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, eachDayOfInterval } from 'date-fns';
 import { 
   Users, TrendingUp, Target, Award, BarChart3, Calendar, 
-  Activity, PieChart, Trophy, TrendingDown 
+  Activity, PieChart, Trophy, TrendingDown, Eye, FileImage, User, Download
 } from 'lucide-react';
 import { logger } from '@/lib/logger';
 import { Role } from '@/lib/roles';
+import { account } from '@/lib/appwrite';
 
 interface DashboardMetrics {
   taxaConclusao: number;
@@ -42,6 +44,10 @@ export default function ManagerDashboard() {
   } = useSubmissions();
 
   const { profiles, loading: profilesLoading } = useAllProfiles();
+
+  // Estados para o modal de detalhes do colaborador
+  const [selectedCollaborator, setSelectedCollaborator] = useState<any>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Calcular todas as métricas do dashboard com dados reais
   const calculateDashboardMetrics = (): DashboardMetrics => {
@@ -196,30 +202,100 @@ export default function ManagerDashboard() {
     });
   };
 
-  // Performance por setor (todos os setores)
-  const generatePerformancePorSetor = () => {
-    if (!profiles || !submissions) return [];
+  // Performance por colaborador (apenas do setor do gestor)
+  const generatePerformancePorColaborador = () => {
+    if (!profile || !profiles || !submissions) return [];
 
     const startMonth = startOfMonth(new Date());
     const daysInMonth = new Date().getDate();
-    const sectorNames = Array.from(new Set(profiles.map(p => p.sector)));
     
-    return sectorNames.map(sector => {
-      const sectorColabs = profiles.filter(p => p.sector === sector && p.role === Role.COLLABORATOR);
-      const sectorSubs = submissions.filter(s => {
+    // Filtrar apenas colaboradores do setor do gestor
+    const sectorCollaborators = profiles.filter(
+      p => p.sector === profile.sector && p.role === Role.COLLABORATOR
+    );
+    
+    return sectorCollaborators.map(collaborator => {
+      const collaboratorSubs = submissions.filter(s => {
         const submissionDate = new Date(s.date);
-        return submissionDate >= startMonth &&
-               sectorColabs.some(collab => collab.$id === s.userProfile.$id);
+        return submissionDate >= startMonth && s.userProfile.$id === collaborator.$id;
       });
 
-      const completion = sectorColabs.length > 0 ? 
-        Math.round((sectorSubs.length / (sectorColabs.length * daysInMonth)) * 100) : 0;
+      const completion = Math.round((collaboratorSubs.length / daysInMonth) * 100);
+      const displayName = collaborator.name || collaborator.userId.split('@')[0] || 'Usuário';
 
       return {
-        date: sector,
-        completion
+        id: collaborator.$id,
+        name: displayName,
+        date: displayName, // Para compatibilidade com o componente Chart
+        completion,
+        submissions: collaboratorSubs,
+        profile: collaborator
       };
     }).sort((a, b) => b.completion - a.completion);
+  };
+
+  // Função para abrir modal com detalhes do colaborador
+  const handleCollaboratorClick = (collaborator: any) => {
+    setSelectedCollaborator(collaborator);
+    setIsModalOpen(true);
+  };
+
+  // Gerar dados de submissões dos últimos 30 dias para o colaborador selecionado
+  const getCollaboratorSubmissionsByDay = (collaboratorId: string) => {
+    if (!submissions) return [];
+
+    const last30Days = Array.from({ length: 30 }, (_, i) => {
+      const date = subDays(new Date(), 29 - i);
+      const daySubmissions = submissions.filter(s => {
+        const submissionDate = new Date(s.date);
+        return startOfDay(submissionDate).getTime() === startOfDay(date).getTime() &&
+               s.userProfile.$id === collaboratorId;
+      });
+
+      return {
+        date: format(date, 'dd/MM'),
+        fullDate: date,
+        hasSubmission: daySubmissions.length > 0,
+        submissions: daySubmissions
+      };
+    });
+
+    return last30Days;
+  };
+
+  // Função para sanitizar e formatar respostas do checklist
+  const formatChecklistResponses = (checklistString: string) => {
+    try {
+      const responses = JSON.parse(checklistString);
+      const entries = Object.entries(responses);
+      
+      if (entries.length === 0) return 'Nenhuma resposta registrada';
+      
+      return entries.map(([key, value]) => {
+        const isCompleted = value === true || value === 'true';
+        const status = isCompleted ? '✅' : '❌';
+        const goalName = key.replace(/^.*-/, '').replace(/_/g, ' '); // Simplificar nome da meta
+        return `${status} ${goalName}`;
+      }).join('\n');
+    } catch (error) {
+      return 'Formato de resposta inválido';
+    }
+  };
+
+  // Função para determinar o tipo de meta baseado nas respostas
+  const determineGoalType = (checklistString: string) => {
+    try {
+      const responses = JSON.parse(checklistString);
+      const entries = Object.entries(responses);
+      
+      if (entries.length === 0) return 'Indefinido';
+      if (entries.length === 1) return 'Meta Individual';
+      if (entries.length > 1) return 'Checklist';
+      
+      return 'Múltiplas Metas';
+    } catch (error) {
+      return 'Formato Inválido';
+    }
   };
 
   // Tendência de crescimento (últimos 7 dias)
@@ -310,7 +386,7 @@ export default function ManagerDashboard() {
   // Calcular dados reais
   const dashboardMetrics = calculateDashboardMetrics();
   const performanceSemanal = generatePerformanceSemanal();
-  const performancePorSetor = generatePerformancePorSetor();
+  const performancePorColaborador = generatePerformancePorColaborador();
   const tendenciaCrescimento = generateTendenciaCrescimento();
   const distribuicaoPorSetor = generateDistribuicaoPorSetor();
 
@@ -449,12 +525,42 @@ export default function ManagerDashboard() {
           <Card className="shadow-lg border-0">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="text-green-600" />
-                Performance por Setor
+                <User className="text-green-600" />
+                Performance por Colaborador
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <Chart data={performancePorSetor.slice(0, 5)} title="" type="bar" />
+              <div className="space-y-3">
+                {performancePorColaborador.slice(0, 5).map((collaborator, index) => (
+                  <div 
+                    key={collaborator.id} 
+                    className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors"
+                    onClick={() => handleCollaboratorClick(collaborator)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                        {collaborator.name.substring(0, 2).toUpperCase()}
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-700">{collaborator.name}</span>
+                        <p className="text-xs text-gray-500">{collaborator.submissions.length} submissões este mês</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-gradient-to-r from-green-500 to-blue-500 rounded-full transition-all duration-500"
+                          style={{ width: `${Math.min(collaborator.completion, 100)}%` }}
+                        />
+                      </div>
+                      <span className="text-sm font-bold text-gray-900 min-w-[50px]">
+                        {collaborator.completion}%
+                      </span>
+                      <Eye className="w-4 h-4 text-gray-400" />
+                    </div>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -568,6 +674,203 @@ export default function ManagerDashboard() {
           </Card>
         </div>
       </div>
+
+      {/* Modal de Detalhes do Colaborador */}
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">
+                {selectedCollaborator?.name.substring(0, 2).toUpperCase()}
+              </div>
+              <div>
+                <span className="text-lg">Detalhes - {selectedCollaborator?.name}</span>
+                <p className="text-sm text-gray-500 font-normal">
+                  {selectedCollaborator?.submissions.length} submissões nos últimos 30 dias
+                </p>
+              </div>
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedCollaborator && (
+            <div className="space-y-6">
+              {/* Estatísticas Resumidas */}
+              <div className="grid grid-cols-3 gap-4">
+                <Card className="border-l-4 border-l-blue-500">
+                  <CardContent className="p-4">
+                    <div className="text-2xl font-bold text-blue-600">
+                      {selectedCollaborator.completion}%
+                    </div>
+                    <div className="text-sm text-gray-600">Taxa de Conclusão</div>
+                  </CardContent>
+                </Card>
+                <Card className="border-l-4 border-l-green-500">
+                  <CardContent className="p-4">
+                    <div className="text-2xl font-bold text-green-600">
+                      {selectedCollaborator.submissions.length}
+                    </div>
+                    <div className="text-sm text-gray-600">Total de Submissões</div>
+                  </CardContent>
+                </Card>
+                <Card className="border-l-4 border-l-purple-500">
+                  <CardContent className="p-4">
+                    <div className="text-2xl font-bold text-purple-600">
+                      {getCollaboratorSubmissionsByDay(selectedCollaborator.id).filter(day => day.hasSubmission).length}
+                    </div>
+                    <div className="text-sm text-gray-600">Dias Ativos</div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Timeline dos Últimos 30 Dias */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Histórico dos Últimos 30 Dias</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-10 gap-1 mb-4">
+                    {getCollaboratorSubmissionsByDay(selectedCollaborator.id).map((day, index) => (
+                      <div
+                        key={index}
+                        className={`w-8 h-8 rounded-md flex items-center justify-center text-xs font-medium transition-all cursor-pointer ${
+                          day.hasSubmission 
+                            ? 'bg-green-500 text-white hover:bg-green-600' 
+                            : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
+                        }`}
+                        title={`${format(day.fullDate, 'dd/MM/yyyy')} - ${day.hasSubmission ? 'Enviado' : 'Não enviado'}`}
+                      >
+                        {day.date.split('/')[0]}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-4 text-sm text-gray-600">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 bg-green-500 rounded"></div>
+                      <span>Enviado</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 bg-gray-200 rounded"></div>
+                      <span>Não enviado</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Lista Detalhada de Submissões */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Submissões Recentes</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4 max-h-96 overflow-y-auto">
+                    {selectedCollaborator.submissions
+                      .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                      .slice(0, 10)
+                      .map((submission: any, index: number) => (
+                        <div key={submission.$id} className="border rounded-lg p-4 hover:bg-gray-50">
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                                <Calendar className="w-5 h-5 text-blue-600" />
+                              </div>
+                              <div>
+                                <div className="font-medium text-gray-900">
+                                  {format(new Date(submission.date), 'dd/MM/yyyy')}
+                                </div>
+                                <div className="text-sm text-gray-500">
+                                  Enviado às {format(new Date(submission.$createdAt), 'HH:mm')}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                                {determineGoalType(submission.checklist)}
+                              </Badge>
+                              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                                Enviado
+                              </Badge>
+                            </div>
+                          </div>
+                          
+                          {/* Respostas do Checklist de forma mais legível */}
+                          {submission.checklist && (
+                            <div className="mb-3">
+                              <div className="text-sm font-medium text-gray-700 mb-2">Metas Concluídas:</div>
+                              <div className="bg-gray-50 p-3 rounded-md">
+                                <pre className="text-sm text-gray-700 whitespace-pre-wrap font-mono">
+                                  {formatChecklistResponses(submission.checklist)}
+                                </pre>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Observações */}
+                          {submission.observation && (
+                            <div className="mb-3 p-3 bg-amber-50 border-l-4 border-amber-200 rounded-r-md">
+                              <div className="text-sm font-medium text-amber-800 mb-1">💬 Observações:</div>
+                              <div className="text-sm text-amber-700">
+                                "{submission.observation}"
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Comprovação */}
+                          {submission.printUrl && (
+                            <div className="flex items-center justify-between p-2 bg-blue-50 rounded-md">
+                              <div className="flex items-center gap-2 text-sm">
+                                <FileImage className="w-4 h-4 text-blue-500" />
+                                <span className="text-blue-700 font-medium">Arquivo de Comprovação</span>
+                              </div>
+                              <div className="flex gap-2">
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  onClick={() => window.open(submission.printUrl, '_blank')}
+                                  className="text-xs"
+                                >
+                                  <Eye className="w-3 h-3 mr-1" />
+                                  Visualizar
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  onClick={() => {
+                                    const link = document.createElement('a');
+                                    link.href = submission.printUrl;
+                                    link.download = `comprovacao_${format(new Date(submission.date), 'ddMMyyyy')}.${submission.printUrl.split('.').pop()}`;
+                                    link.click();
+                                  }}
+                                  className="text-xs"
+                                >
+                                  <Download className="w-3 h-3 mr-1" />
+                                  Baixar
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {!submission.printUrl && (
+                            <div className="flex items-center gap-2 text-sm text-gray-500 p-2 bg-gray-50 rounded-md">
+                              <FileImage className="w-4 h-4" />
+                              <span>Nenhum arquivo anexado</span>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    
+                    {selectedCollaborator.submissions.length === 0 && (
+                      <div className="text-center py-8 text-gray-500">
+                        <Target className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                        <p>Nenhuma submissão encontrada nos últimos 30 dias</p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

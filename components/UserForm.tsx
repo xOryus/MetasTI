@@ -17,6 +17,7 @@ import { Role } from '@/lib/roles';
 
 interface UserFormProps {
   onSubmitAction: (userData: {
+    name: string;
     email: string;
     password: string;
     sector: Sector;
@@ -27,6 +28,7 @@ interface UserFormProps {
 }
 
 export function UserForm({ onSubmitAction, loading, error }: UserFormProps) {
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [sector, setSector] = useState<Sector | ''>('');
@@ -48,6 +50,7 @@ export function UserForm({ onSubmitAction, loading, error }: UserFormProps) {
     }
     
     const success = await onSubmitAction({
+      name,
       email,
       password,
       sector: sector as Sector,
@@ -56,6 +59,7 @@ export function UserForm({ onSubmitAction, loading, error }: UserFormProps) {
     
     // Só resetar o formulário se a operação foi bem-sucedida
     if (success) {
+      setName('');
       setEmail('');
       setPassword('');
       setSector('');
@@ -70,6 +74,19 @@ export function UserForm({ onSubmitAction, loading, error }: UserFormProps) {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="name">Nome Completo</Label>
+            <Input
+              id="name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Ex: João Silva"
+              required
+              disabled={loading}
+            />
+          </div>
+          
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input

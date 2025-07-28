@@ -87,6 +87,7 @@ export interface SectorGoal {
 export interface UserProfile {
   $id: string;
   userId: string;
+  name: string; // Campo para nome do usuário
   sector: Sector;
   role: Role;
   $createdAt: string;
