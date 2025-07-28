@@ -9,7 +9,7 @@ import { useRouter } from 'next/router';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Chart } from '@/components/Chart';
 import ProofImageViewer from '@/components/ProofImageViewer';
 import { useAuth } from '@/hooks/useAuth';
@@ -59,7 +59,7 @@ interface ActionCard {
   value: number;
   trend: number;
   description: string;
-  action: string;
+  action?: string; // Tornando opcional
   icon: any;
   color: string;
 }
@@ -290,8 +290,7 @@ export default function ManagerDashboard() {
         type: 'risk',
         title: 'Colaboradores Inativos',
         description: `${inactiveCollaborators.length} colaborador(es) sem submissão há 3+ dias`,
-        count: inactiveCollaborators.length,
-        action: 'Revisar atividade'
+        count: inactiveCollaborators.length
       });
     }
 
@@ -458,7 +457,6 @@ export default function ManagerDashboard() {
         value: Math.round(weeklyPerformance),
         trend: 5, // Placeholder - poderia ser calculado vs semana anterior
         description: 'Taxa de conclusão desta semana',
-        action: 'Analisar tendência',
         icon: TrendingUp,
         color: weeklyPerformance >= 70 ? 'text-green-600' : 'text-yellow-600'
       },
@@ -476,7 +474,6 @@ export default function ManagerDashboard() {
         value: Math.round(averageStreak),
         trend: 12, // Placeholder
         description: 'Dias consecutivos em média',
-        action: 'Incentivar',
         icon: Zap,
         color: 'text-purple-600'
       }
@@ -662,17 +659,19 @@ export default function ManagerDashboard() {
                           {card.description}
                         </p>
                         
-                        <div className="pt-4">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            onClick={() => handleCardAction(card.action)}
-                            className="group-hover:bg-blue-50 group-hover:text-blue-700 transition-all duration-200 rounded-xl px-4 py-2 text-xs font-semibold hover:shadow-md"
-                          >
-                            {card.action} 
-                            <TrendingUp className="w-3 h-3 ml-2" />
-                          </Button>
-                        </div>
+                        {card.action && (
+                          <div className="pt-4">
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={() => handleCardAction(card.action!)}
+                              className="group-hover:bg-blue-50 group-hover:text-blue-700 transition-all duration-200 rounded-xl px-4 py-2 text-xs font-semibold hover:shadow-md"
+                            >
+                              {card.action} 
+                              <TrendingUp className="w-3 h-3 ml-2" />
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -691,100 +690,96 @@ export default function ManagerDashboard() {
           })}
         </div>
 
-        {/* Seção de Alertas - Design Premium */}
+        {/* Alertas Inteligentes - Design Clean e Moderno */}
         {alerts.length > 0 && (
-          <Card className="mb-12 shadow-lg border border-orange-100/50 bg-gradient-to-r from-white via-orange-50/20 to-red-50/20 backdrop-blur-sm overflow-hidden rounded-xl">
-            {/* Header com gradiente */}
-            <div className="bg-gradient-to-r from-orange-500 to-red-500 p-1 rounded-t-xl">
-              <CardHeader className="bg-white/95 backdrop-blur-sm rounded-t-lg">
-                <CardTitle className="flex items-center gap-3 text-orange-700">
-                  <div className="p-2 bg-orange-100 rounded-xl">
-                    <AlertTriangle className="w-5 h-5 text-orange-600" />
-                  </div>
-                  <div>
-                    <span className="text-xl font-bold">Alertas Inteligentes</span>
-                    <p className="text-sm font-normal text-gray-600 mt-1">
-                      Sistema de monitoramento proativo para tomada de decisão
-                    </p>
-                  </div>
-                </CardTitle>
-              </CardHeader>
+          <div className="mb-12">
+            {/* Header simples e elegante */}
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+                <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-red-500 rounded-lg flex items-center justify-center">
+                  <AlertTriangle className="w-4 h-4 text-white" />
+                </div>
+                Alertas Inteligentes
+              </h2>
+              <p className="text-gray-600 mt-1 ml-11">
+                Monitoramento proativo para tomada de decisão
+              </p>
             </div>
             
-            <CardContent className="p-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {alerts.map((alert, index) => (
-                  <div 
-                    key={index} 
-                    className={`group relative p-6 rounded-xl border shadow-sm hover:shadow-md transition-all duration-300 transform hover:-translate-y-1 ${
-                      alert.type === 'risk' ? 'border-red-100 bg-gradient-to-br from-red-50 to-red-100/30 hover:border-red-200' :
-                      alert.type === 'warning' ? 'border-yellow-100 bg-gradient-to-br from-yellow-50 to-yellow-100/30 hover:border-yellow-200' :
-                      'border-green-100 bg-gradient-to-br from-green-50 to-green-100/30 hover:border-green-200'
-                    }`}
-                  >
-                    {/* Badge de status */}
-                    <div className="absolute -top-3 -right-3">
-                      <Badge 
-                        variant="secondary" 
-                        className={`text-sm font-bold px-3 py-1 shadow-lg ${
-                          alert.type === 'risk' ? 'bg-red-500 text-white' :
-                          alert.type === 'warning' ? 'bg-yellow-500 text-white' :
-                          'bg-green-500 text-white'
-                        }`}
-                      >
-                        {alert.count}
-                      </Badge>
-                    </div>
-                    
-                    <div className="space-y-4">
-                      <div className="flex items-start gap-3">
-                        <div className={`p-2 rounded-xl ${
-                          alert.type === 'risk' ? 'bg-red-200' :
-                          alert.type === 'warning' ? 'bg-yellow-200' :
-                          'bg-green-200'
-                        }`}>
-                          {alert.type === 'risk' ? <XCircle className="w-5 h-5 text-red-600" /> :
-                           alert.type === 'warning' ? <Clock className="w-5 h-5 text-yellow-600" /> :
-                           <CheckCircle className="w-5 h-5 text-green-600" />}
-                        </div>
-                        <div>
-                          <h4 className={`font-bold text-lg ${
-                            alert.type === 'risk' ? 'text-red-800' :
-                            alert.type === 'warning' ? 'text-yellow-800' :
-                            'text-green-800'
-                          }`}>
-                            {alert.title}
-                          </h4>
-                          <p className={`text-sm mt-2 leading-relaxed ${
-                            alert.type === 'risk' ? 'text-red-700' :
-                            alert.type === 'warning' ? 'text-yellow-700' :
-                            'text-green-700'
-                          }`}>
-                            {alert.description}
-                          </p>
-                        </div>
-                      </div>
-                      
-                      {alert.action && (
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className={`w-full font-semibold transition-all duration-200 ${
-                            alert.type === 'risk' ? 'border-red-300 text-red-700 hover:bg-red-100' :
-                            alert.type === 'warning' ? 'border-yellow-300 text-yellow-700 hover:bg-yellow-100' :
-                            'border-green-300 text-green-700 hover:bg-green-100'
-                          }`}
-                        >
-                          {alert.action}
-                          <TrendingUp className="w-4 h-4 ml-2" />
-                        </Button>
-                      )}
+            {/* Grid de alertas com design clean */}
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {alerts.map((alert, index) => (
+                <div 
+                  key={index} 
+                  className={`relative p-6 rounded-2xl border-l-4 bg-white shadow-sm hover:shadow-md transition-all duration-300 ${
+                    alert.type === 'risk' ? 'border-l-red-400 bg-red-50/30' :
+                    alert.type === 'warning' ? 'border-l-yellow-400 bg-yellow-50/30' :
+                    'border-l-green-400 bg-green-50/30'
+                  }`}
+                >
+                  {/* Badge de contagem */}
+                  <div className="absolute -top-2 -right-2">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-md ${
+                      alert.type === 'risk' ? 'bg-red-500' :
+                      alert.type === 'warning' ? 'bg-yellow-500' :
+                      'bg-green-500'
+                    }`}>
+                      {alert.count}
                     </div>
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                  
+                  <div className="space-y-3">
+                    {/* Ícone e título */}
+                    <div className="flex items-start gap-3">
+                      <div className={`p-2 rounded-lg ${
+                        alert.type === 'risk' ? 'bg-red-100' :
+                        alert.type === 'warning' ? 'bg-yellow-100' :
+                        'bg-green-100'
+                      }`}>
+                        {alert.type === 'risk' ? <XCircle className="w-5 h-5 text-red-600" /> :
+                         alert.type === 'warning' ? <Clock className="w-5 h-5 text-yellow-600" /> :
+                         <CheckCircle className="w-5 h-5 text-green-600" />}
+                      </div>
+                      <div>
+                        <h4 className={`font-semibold ${
+                          alert.type === 'risk' ? 'text-red-900' :
+                          alert.type === 'warning' ? 'text-yellow-900' :
+                          'text-green-900'
+                        }`}>
+                          {alert.title}
+                        </h4>
+                      </div>
+                    </div>
+                    
+                    {/* Descrição */}
+                    <p className={`text-sm leading-relaxed ${
+                      alert.type === 'risk' ? 'text-red-700' :
+                      alert.type === 'warning' ? 'text-yellow-700' :
+                      'text-green-700'
+                    }`}>
+                      {alert.description}
+                    </p>
+                    
+                    {/* Botão de ação (se existir) */}
+                    {alert.action && (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className={`w-full mt-4 font-medium transition-all duration-200 ${
+                          alert.type === 'risk' ? 'border-red-200 text-red-700 hover:bg-red-50 hover:border-red-300' :
+                          alert.type === 'warning' ? 'border-yellow-200 text-yellow-700 hover:bg-yellow-50 hover:border-yellow-300' :
+                          'border-green-200 text-green-700 hover:bg-green-50 hover:border-green-300'
+                        }`}
+                      >
+                        {alert.action}
+                        <TrendingUp className="w-4 h-4 ml-2" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
 
         {/* Ranking de Colaboradores e Gráficos - Layout Premium */}
@@ -976,6 +971,9 @@ export default function ManagerDashboard() {
                   </p>
                 </div>
               </DialogTitle>
+              <DialogDescription className="text-gray-600 mt-2">
+                Visualize informações detalhadas sobre o desempenho, metas e atividades do colaborador selecionado.
+              </DialogDescription>
             </DialogHeader>
             
             {selectedCollaborator && (
@@ -1213,6 +1211,9 @@ export default function ManagerDashboard() {
                 <AlertTriangle className="w-6 h-6" />
                 Colaboradores que Precisam de Atenção
               </DialogTitle>
+              <DialogDescription className="text-gray-600 mt-2">
+                Lista de colaboradores com baixo desempenho ou que necessitam de acompanhamento especial.
+              </DialogDescription>
             </DialogHeader>
             
             <div className="space-y-4">
@@ -1262,6 +1263,9 @@ export default function ManagerDashboard() {
                 <Trophy className="w-6 h-6" />
                 Top Performers - Reconhecimento da Equipe
               </DialogTitle>
+              <DialogDescription className="text-gray-600 mt-2">
+                Reconheça e celebre os colaboradores com melhor desempenho da equipe.
+              </DialogDescription>
             </DialogHeader>
             
             <div className="space-y-4">
