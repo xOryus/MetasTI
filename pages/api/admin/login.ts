@@ -21,6 +21,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const adminProfile: UserProfile = {
         $id: 'admin',
         userId: 'admin',
+        name: 'Administrador',
         sector: Sector.TI,
         role: Role.ADMIN,
         $createdAt: new Date().toISOString(),

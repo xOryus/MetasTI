@@ -6,10 +6,18 @@
 import { Client, Account, Databases, Storage, ID } from 'appwrite';
 import { Role } from './roles';
 
+// Validação das variáveis de ambiente
+const APPWRITE_ENDPOINT = process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT;
+const APPWRITE_PROJECT_ID = process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID;
+
+if (!APPWRITE_ENDPOINT || !APPWRITE_PROJECT_ID) {
+  throw new Error('Missing required Appwrite environment variables. Please check your .env.local file.');
+}
+
 // Cliente público (frontend)
 export const client = new Client()
-  .setEndpoint(process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT!)
-  .setProject(process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID!);
+  .setEndpoint(APPWRITE_ENDPOINT)
+  .setProject(APPWRITE_PROJECT_ID);
 
 // Serviços
 export const account = new Account(client);
