@@ -4,14 +4,13 @@
  * Focado em insights acionáveis para tomada de decisão eficaz
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo, lazy, Suspense } from 'react';
 import { useRouter } from 'next/router';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Chart } from '@/components/Chart';
-import ProofImageViewer from '@/components/ProofImageViewer';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubmissions } from '@/hooks/useSubmissions';
 import { useAllProfiles } from '@/hooks/useAllProfiles';
@@ -24,6 +23,9 @@ import {
 import { logger } from '@/lib/logger';
 import { Role } from '@/lib/roles';
 import { account } from '@/lib/appwrite';
+
+// Lazy load dos componentes pesados para melhorar LCP
+const ProofImageViewer = lazy(() => import('@/components/ProofImageViewer'));
 
 interface DashboardMetrics {
   taxaConclusao: number;
@@ -559,15 +561,42 @@ export default function ManagerDashboard() {
     }
   };
 
-  if (authLoading || submissionsLoading || profilesLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Carregando dashboard...</p>
+  // Componente de Loading Skeleton otimizado para melhor LCP
+  const DashboardSkeleton = () => (
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Header Skeleton */}
+        <div className="mb-8">
+          <div className="h-8 bg-gray-200 rounded-lg w-64 mb-2 animate-pulse"></div>
+          <div className="h-4 bg-gray-200 rounded w-48 animate-pulse"></div>
+        </div>
+        
+        {/* Metrics Cards Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {[1,2,3,4].map(i => (
+            <div key={i} className="bg-white rounded-xl p-6 shadow-sm border animate-pulse">
+              <div className="h-4 bg-gray-200 rounded w-24 mb-2"></div>
+              <div className="h-8 bg-gray-200 rounded w-16 mb-2"></div>
+              <div className="h-3 bg-gray-200 rounded w-32"></div>
+            </div>
+          ))}
+        </div>
+        
+        {/* Charts Skeleton */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {[1,2].map(i => (
+            <div key={i} className="bg-white rounded-xl p-6 shadow-sm border animate-pulse">
+              <div className="h-6 bg-gray-200 rounded w-48 mb-4"></div>
+              <div className="h-64 bg-gray-200 rounded"></div>
+            </div>
+          ))}
         </div>
       </div>
-    );
+    </div>
+  );
+
+  if (authLoading || submissionsLoading || profilesLoading) {
+    return <DashboardSkeleton />;
   }
 
   if (!isAuthenticated || !profile) {
@@ -1162,11 +1191,15 @@ export default function ManagerDashboard() {
                                     <span className="font-semibold text-gray-800">Arquivo Comprobatório</span>
                                   </div>
                                   <div className="flex gap-3">
-                                    <ProofImageViewer 
-                                      fileId={submission.printFileId}
-                                      submissionDate={format(new Date(submission.date), 'dd/MM/yyyy')}
-                                      userName={selectedCollaborator.name}
-                                    />
+                                    <Suspense fallback={
+                                      <div className="animate-pulse bg-gray-200 h-10 w-24 rounded"></div>
+                                    }>
+                                      <ProofImageViewer 
+                                        fileId={submission.printFileId}
+                                        submissionDate={format(new Date(submission.date), 'dd/MM/yyyy')}
+                                        userName={selectedCollaborator.name}
+                                      />
+                                    </Suspense>
                                     <Button 
                                       variant="outline" 
                                       size="sm"
