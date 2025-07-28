@@ -16,7 +16,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { useSubmissions } from '@/hooks/useSubmissions';
 import { useAllProfiles } from '@/hooks/useAllProfiles';
 import { format, subDays, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, eachDayOfInterval, differenceInDays, getDaysInMonth } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { 
   Users, TrendingUp, Target, Award, BarChart3, Calendar, 
   Activity, PieChart, Trophy, TrendingDown, Eye, FileImage, User, Download,
@@ -76,9 +75,22 @@ export default function ManagerDashboard() {
 
   const { profiles, loading: profilesLoading } = useAllProfiles();
 
+  // Função helper para formatar mês em português
+  const getMonthNameInPortuguese = (date: Date) => {
+    const months = [
+      'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+      'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'
+    ];
+    return months[date.getMonth()];
+  };
+
   // Estados para o modal de detalhes do colaborador
   const [selectedCollaborator, setSelectedCollaborator] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Estados para modais dos cards de ação
+  const [isAttentionModalOpen, setIsAttentionModalOpen] = useState(false);
+  const [isTopPerformersModalOpen, setIsTopPerformersModalOpen] = useState(false);
 
   // Estados para funcionalidades avançadas
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
@@ -490,6 +502,38 @@ export default function ManagerDashboard() {
     }
   };
 
+  // Funções para lidar com os cliques dos botões dos cards
+  const handleCardAction = (action: string) => {
+    switch(action) {
+      case 'Ver detalhes':
+        setIsAttentionModalOpen(true);
+        break;
+      case 'Reconhecer':
+        setIsTopPerformersModalOpen(true);
+        break;
+      case 'Analisar tendência':
+      case 'Incentivar':
+        // Funcionalidades não implementadas - poderiam ser tooltips ou notificações
+        break;
+      default:
+        break;
+    }
+  };
+
+  // Filtrar colaboradores que precisam de atenção (performance < 70%)
+  const getCollaboratorsNeedingAttention = () => {
+    return collaboratorRankings
+      .filter(collab => collab.completionRate < 70)
+      .sort((a, b) => a.completionRate - b.completionRate); // Pior performance primeiro
+  };
+
+  // Filtrar top performers (performance >= 80%)
+  const getTopPerformers = () => {
+    return collaboratorRankings
+      .filter(collab => collab.completionRate >= 80)
+      .sort((a, b) => b.completionRate - a.completionRate); // Melhor performance primeiro
+  };
+
   // Atualizar estados quando dados mudarem
   useEffect(() => {
     if (profiles && submissions && profile) {
@@ -622,7 +666,8 @@ export default function ManagerDashboard() {
                           <Button 
                             variant="ghost" 
                             size="sm" 
-                            className="group-hover:bg-blue-50 group-hover:text-blue-700 transition-all duration-200 rounded-xl px-4 py-2 text-xs font-semibold"
+                            onClick={() => handleCardAction(card.action)}
+                            className="group-hover:bg-blue-50 group-hover:text-blue-700 transition-all duration-200 rounded-xl px-4 py-2 text-xs font-semibold hover:shadow-md"
                           >
                             {card.action} 
                             <TrendingUp className="w-3 h-3 ml-2" />
@@ -971,7 +1016,7 @@ export default function ManagerDashboard() {
                         <Calendar className="w-6 h-6 text-green-600" />
                       </div>
                       <div>
-                        <span>Timeline do Mês - {format(new Date(), 'MMMM yyyy', { locale: ptBR })}</span>
+                        <span>Timeline do Mês - {getMonthNameInPortuguese(new Date())} {format(new Date(), 'yyyy')}</span>
                         <p className="text-sm font-normal text-gray-600 mt-1">
                           Acompanhamento diário de atividades do mês
                         </p>
@@ -1157,6 +1202,121 @@ export default function ManagerDashboard() {
                 </Card>
               </div>
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Modal: Colaboradores que Precisam de Atenção */}
+        <Dialog open={isAttentionModalOpen} onOpenChange={setIsAttentionModalOpen}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-3 text-xl font-bold text-red-700">
+                <AlertTriangle className="w-6 h-6" />
+                Colaboradores que Precisam de Atenção
+              </DialogTitle>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              {getCollaboratorsNeedingAttention().length === 0 ? (
+                <div className="text-center py-8">
+                  <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
+                  <p className="text-lg font-semibold text-green-700">Excelente!</p>
+                  <p className="text-gray-600">Todos os colaboradores estão com boa performance!</p>
+                </div>
+              ) : (
+                getCollaboratorsNeedingAttention().map((collab, index) => (
+                  <div key={collab.id} className="p-4 border border-red-200 rounded-xl bg-gradient-to-r from-red-50 to-orange-50">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-red-600 rounded-full flex items-center justify-center text-white font-bold">
+                          {index + 1}
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-gray-900">{collab.name}</h4>
+                          <p className="text-sm text-gray-600">Status: {collab.status === 'risk' ? 'Risco' : 'Inativo'}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-2xl font-bold text-red-600">
+                          {Math.round(collab.completionRate)}%
+                        </div>
+                        <p className="text-xs text-gray-500">Taxa de conclusão</p>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex items-center gap-4 text-sm text-gray-600">
+                      <span>📅 Esta semana: {collab.submissionsThisWeek}</span>
+                      <span>🔥 Streak: {collab.streak} dias</span>
+                      <span>📊 Última submissão: {collab.lastSubmission}</span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Modal: Top Performers - Reconhecimento */}
+        <Dialog open={isTopPerformersModalOpen} onOpenChange={setIsTopPerformersModalOpen}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-3 text-xl font-bold text-blue-700">
+                <Trophy className="w-6 h-6" />
+                Top Performers - Reconhecimento da Equipe
+              </DialogTitle>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              {getTopPerformers().length === 0 ? (
+                <div className="text-center py-8">
+                  <Target className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-lg font-semibold text-gray-700">Nenhum Top Performer</p>
+                  <p className="text-gray-600">Ainda não há colaboradores com performance acima de 80%</p>
+                </div>
+              ) : (
+                getTopPerformers().map((collab, index) => (
+                  <div key={collab.id} className="p-4 border border-blue-200 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold ${
+                          index === 0 ? 'bg-gradient-to-br from-yellow-400 to-yellow-500' :
+                          index === 1 ? 'bg-gradient-to-br from-gray-400 to-gray-500' :
+                          index === 2 ? 'bg-gradient-to-br from-orange-400 to-orange-500' :
+                          'bg-gradient-to-br from-blue-400 to-blue-500'
+                        }`}>
+                          {index < 3 ? (
+                            index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉'
+                          ) : (
+                            index + 1
+                          )}
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-gray-900">{collab.name}</h4>
+                          <p className="text-sm text-gray-600">Status: {collab.status === 'active' ? 'Ativo' : 'Bom desempenho'}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-2xl font-bold text-blue-600">
+                          {Math.round(collab.completionRate)}%
+                        </div>
+                        <p className="text-xs text-gray-500">Taxa de conclusão</p>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex items-center gap-4 text-sm text-gray-600">
+                      <span>📅 Esta semana: {collab.submissionsThisWeek}</span>
+                      <span>🔥 Streak: {collab.streak} dias</span>
+                      <span>⭐ Performance excepcional!</span>
+                    </div>
+                  </div>
+                ))
+              )}
+              
+              {getTopPerformers().length > 0 && (
+                <div className="mt-6 p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-xl border border-green-200">
+                  <p className="text-center text-green-700 font-semibold">
+                    🎉 Parabéns aos nossos top performers! Continue com o excelente trabalho! 🎉
+                  </p>
+                </div>
+              )}
+            </div>
           </DialogContent>
         </Dialog>
 
