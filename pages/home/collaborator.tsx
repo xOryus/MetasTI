@@ -51,30 +51,41 @@ export default function CollaboratorHome() {
     }
   }, [profile?.sector, fetchActiveGoalsBySector]);
 
-  // Converter metas do setor para formato de checklist com títulos e descrições
-  const checklistGoals = useMemo(() => {
-    return sectorGoals.flatMap(goal => {
+  // Separar metas por tipo para tratamento individual
+  const goalsByType = useMemo(() => {
+    const checklistGoals: any[] = [];
+    const individualGoals: any[] = [];
+    
+    sectorGoals.forEach(goal => {
       if (goal.type === 'boolean_checklist' && goal.checklistItems) {
-        // Para metas do tipo boolean_checklist, expandir cada item da lista
-        return goal.checklistItems.map((item, index) => ({
-          id: `${goal.$id}-${index}`,
-          label: item,
-          goalTitle: goal.title,
-          goalDescription: goal.description,
-          required: true
-        }));
+        // Para metas do tipo boolean_checklist, manter como checklist
+        checklistGoals.push({
+          ...goal,
+          items: goal.checklistItems.map((item, index) => ({
+            id: `${goal.$id}-${index}`,
+            label: item,
+            required: true
+          }))
+        });
       } else {
-        // Para outros tipos de metas, criar um item único
-        return [{
-          id: goal.$id!,
-          label: goal.title,
-          goalTitle: goal.title,
-          goalDescription: goal.description,
-          required: goal.type !== 'boolean_checklist'
-        }];
+        // Para outros tipos de metas, tratar individualmente
+        individualGoals.push(goal);
       }
     });
+    
+    return { checklistGoals, individualGoals };
   }, [sectorGoals]);
+
+  // Manter compatibilidade com ChecklistForm (apenas para metas do tipo checklist)
+  const checklistItems = useMemo(() => {
+    return goalsByType.checklistGoals.flatMap(goal => 
+      goal.items.map((item: any) => ({
+        ...item,
+        goalTitle: goal.title,
+        goalDescription: goal.description
+      }))
+    );
+  }, [goalsByType.checklistGoals]);
 
   // Cálculos de performance baseados nas submissões reais
   const calculateWeeklyCompletion = (weekStart: Date) => {
@@ -136,7 +147,7 @@ export default function CollaboratorHome() {
       );
       
       // Calcular taxa de conclusão baseada no número de metas vs respostas
-      const totalGoals = checklistGoals.length;
+      const totalGoals = checklistItems.length + goalsByType.individualGoals.length;
       const hasSubmission = daySubmissions.length > 0;
       
       // Se tem submissão, assume 100%, senão 0%
@@ -150,7 +161,7 @@ export default function CollaboratorHome() {
     });
     
     return last7Days;
-  }, [submissions, checklistGoals]);
+  }, [submissions, checklistItems, goalsByType.individualGoals]);
 
   const handleSubmit = async (
     answers: Record<string, boolean>,
@@ -265,7 +276,7 @@ export default function CollaboratorHome() {
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
                     <p className="mt-4 text-gray-600">Carregando metas do setor...</p>
                   </div>
-                ) : checklistGoals.length === 0 ? (
+                ) : (checklistItems.length === 0 && goalsByType.individualGoals.length === 0) ? (
                   <div className="text-center py-12 text-gray-500">
                     <Target className="w-16 h-16 mx-auto mb-4 text-blue-400" />
                     <h3 className="text-lg font-medium text-gray-700 mb-2">
@@ -276,12 +287,143 @@ export default function CollaboratorHome() {
                     </p>
                   </div>
                 ) : !hasSubmittedToday ? (
-                  <ChecklistForm
-                    items={checklistGoals}
-                    onSubmitAction={handleSubmit}
-                    loading={submitLoading}
-                    error={submitError}
-                  />
+                  <div className="space-y-6">
+                    {/* Metas Individuais */}
+                    {goalsByType.individualGoals.map(goal => (
+                      <Card key={goal.$id} className="border border-gray-200">
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-lg font-semibold text-gray-800">
+                            {goal.title}
+                          </CardTitle>
+                          <p className="text-sm text-gray-600">{goal.description}</p>
+                          <div className="flex items-center gap-2 text-xs text-gray-500">
+                            <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full">
+                              {goal.type === 'numeric' ? 'Numérico' : 
+                               goal.type === 'percentage' ? 'Porcentagem' : 
+                               goal.type === 'task_completion' ? 'Tarefa' : goal.type}
+                            </span>
+                            {(goal.type === 'numeric' || goal.type === 'percentage') && (
+                              <span>Meta: {goal.targetValue}{goal.type === 'percentage' ? '%' : ''}</span>
+                            )}
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          {goal.type === 'numeric' && (
+                            <div className="space-y-3">
+                              <label className="block text-sm font-medium text-gray-700">
+                                Valor Atual:
+                              </label>
+                              <input
+                                type="number"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder={`Meta: ${goal.targetValue}`}
+                                min="0"
+                              />
+                            </div>
+                          )}
+                          {goal.type === 'percentage' && (
+                            <div className="space-y-3">
+                              <label className="block text-sm font-medium text-gray-700">
+                                Porcentagem Atual (%):
+                              </label>
+                              <input
+                                type="number"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder={`Meta: ${goal.targetValue}%`}
+                                min="0"
+                                max="100"
+                              />
+                            </div>
+                          )}
+                          {goal.type === 'task_completion' && (
+                            <div className="space-y-3">
+                              <label className="flex items-center space-x-2">
+                                <input
+                                  type="checkbox"
+                                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                />
+                                <span className="text-sm text-gray-700">Tarefa concluída</span>
+                              </label>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))}
+                    
+                    {/* Metas do tipo Checklist */}
+                    {goalsByType.checklistGoals.map(goal => (
+                      <Card key={goal.$id} className="border border-gray-200">
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-lg font-semibold text-gray-800">
+                            {goal.title}
+                          </CardTitle>
+                          <p className="text-sm text-gray-600">{goal.description}</p>
+                          <div className="flex items-center gap-2 text-xs text-gray-500">
+                            <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full">
+                              Lista de Verificação
+                            </span>
+                            <span>{goal.items.length} itens</span>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-2">
+                            {goal.items.map((item: any) => (
+                              <label key={item.id} className="flex items-center space-x-2">
+                                <input
+                                  type="checkbox"
+                                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                />
+                                <span className="text-sm text-gray-700">{item.label}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+
+                    {/* Seção de Observações e Envio */}
+                    <Card className="border border-gray-200 bg-gray-50">
+                      <CardHeader>
+                        <CardTitle className="text-lg font-semibold text-gray-800">
+                          Finalizar Envio
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Observações:
+                          </label>
+                          <textarea
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            rows={3}
+                            placeholder="Descreva qualquer observação relevante..."
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Print de Comprovação:
+                          </label>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                        
+                        <Button 
+                          className="w-full" 
+                          disabled={submitLoading}
+                        >
+                          {submitLoading ? 'Enviando...' : 'Enviar Checklist'}
+                        </Button>
+                        
+                        {submitError && (
+                          <div className="text-red-600 text-sm">{submitError}</div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
                 ) : (
                   <div className="text-center py-12 text-gray-500">
                     <Target className="w-16 h-16 mx-auto mb-4 text-green-500" />
