@@ -16,6 +16,7 @@ import { format, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isWi
 import { Target, TrendingUp, Calendar, Award } from 'lucide-react';
 import { logger } from '@/lib/logger';
 import { formatCurrency, centavosToReais } from '@/lib/currency';
+import { calculateUserRewards, formatPeriodDisplay, calculateDailyRewardValue, type UserRewardStats } from '@/lib/rewards';
 
 export default function CollaboratorHome() {
   const { isAuthenticated, profile, logout, loading: authLoading } = useAuth();
@@ -34,7 +35,9 @@ export default function CollaboratorHome() {
     loading: submissionsLoading,
     createSubmission,
     hasSubmissionToday,
-    getCompletionStats
+    getCompletionStats,
+    calculateRewards,
+    getMonthlyEarnings
   } = useSubmissions();
 
   const {
@@ -297,6 +300,29 @@ export default function CollaboratorHome() {
     };
   }, [submissions]);
 
+  // Calcular recompensas monetárias baseadas nas metas individuais
+  const rewardStats = useMemo(() => {
+    if (!profile?.userId || !sectorGoals.length) {
+      return {
+        totalEarnedThisMonth: 0,
+        totalEarnedThisWeek: 0,
+        totalEarnedToday: 0,
+        totalPendingRewards: 0,
+        totalAvailableRewards: 0,
+        rewardsByPeriod: []
+      };
+    }
+
+    return calculateRewards ? calculateRewards(sectorGoals, profile.userId) : {
+      totalEarnedThisMonth: 0,
+      totalEarnedThisWeek: 0,
+      totalEarnedToday: 0,
+      totalPendingRewards: 0,
+      totalAvailableRewards: 0,
+      rewardsByPeriod: []
+    };
+  }, [sectorGoals, submissions, profile?.userId, calculateRewards]);
+
   // Remover as variáveis individuais que agora estão dentro do useMemo
 
   if (authLoading || submissionsLoading) {
@@ -392,9 +418,14 @@ export default function CollaboratorHome() {
                             )}
                             {/* Exibir recompensa monetária se existir */}
                             {goal.hasMonetaryReward && goal.monetaryValue && (
-                              <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full font-medium">
-                                💰 {formatCurrency(centavosToReais(goal.monetaryValue))}
-                              </span>
+                              <div className="flex flex-col gap-1">
+                                <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full font-medium text-xs">
+                                  💰 {formatCurrency(centavosToReais(goal.monetaryValue))} - {formatPeriodDisplay(goal.period)}
+                                </span>
+                                <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full font-medium text-xs">
+                                  Diário: {formatCurrency(centavosToReais(calculateDailyRewardValue(goal.monetaryValue, goal.period)))}
+                                </span>
+                              </div>
                             )}
                           </div>
                         </CardHeader>
@@ -598,11 +629,15 @@ export default function CollaboratorHome() {
                 </CardContent>
               </Card>
 
-              <Card className="shadow-md border-0 bg-gradient-to-br from-purple-50 to-purple-100">
+              <Card className="shadow-md border-0 bg-gradient-to-br from-green-50 to-green-100">
                 <CardContent className="p-4 text-center">
-                  <Award className="w-8 h-8 mx-auto mb-2 text-purple-600" />
-                  <div className="text-2xl font-bold text-purple-700">{personalStats.totalThisMonth}</div>
-                  <div className="text-xs text-purple-600">Este Mês</div>
+                  <div className="w-8 h-8 mx-auto mb-2 text-green-600 flex items-center justify-center">
+                    💰
+                  </div>
+                  <div className="text-2xl font-bold text-green-700">
+                    {formatCurrency(centavosToReais(rewardStats?.totalEarnedThisMonth || 0))}
+                  </div>
+                  <div className="text-xs text-green-600">Ganho no Mês</div>
                 </CardContent>
               </Card>
 
@@ -623,29 +658,72 @@ export default function CollaboratorHome() {
               height={200}
             />
 
-            {/* Progresso do Mês */}
+            {/* Recompensas Monetárias */}
             <Card className="shadow-md border-0 bg-white">
               <CardHeader className="pb-3">
-                <CardTitle className="text-lg font-bold text-gray-900">Progresso Mensal</CardTitle>
+                <CardTitle className="text-lg font-bold text-gray-900">Recompensas Monetárias</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Meta do Mês</span>
-                    <span className="font-medium">30 dias</span>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-green-50 rounded-lg p-3">
+                      <div className="text-sm text-green-600 font-medium">Ganho na Semana</div>
+                      <div className="text-lg font-bold text-green-700">
+                        {formatCurrency(centavosToReais(rewardStats?.totalEarnedThisWeek || 0))}
+                      </div>
+                    </div>
+                    
+                    <div className="bg-blue-50 rounded-lg p-3">
+                      <div className="text-sm text-blue-600 font-medium">Disponível</div>
+                      <div className="text-lg font-bold text-blue-700">
+                        {formatCurrency(centavosToReais(rewardStats?.totalAvailableRewards || 0))}
+                      </div>
+                    </div>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-3">
-                    <div 
-                      className="bg-gradient-to-r from-blue-500 to-blue-600 h-3 rounded-full transition-all duration-500"
-                      style={{ width: `${(personalStats.totalThisMonth / 30) * 100}%` }}
-                    ></div>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">{personalStats.totalThisMonth} de 30 dias</span>
-                    <span className="font-medium text-blue-600">
-                      {Math.round((personalStats.totalThisMonth / 30) * 100)}%
-                    </span>
-                  </div>
+
+                  {/* Lista de metas com recompensas */}
+                  {rewardStats?.rewardsByPeriod && rewardStats.rewardsByPeriod.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium text-gray-700 mb-2">Metas com Recompensas:</div>
+                      {rewardStats.rewardsByPeriod.slice(0, 3).map((reward, index) => (
+                        <div key={reward.goalId} className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded">
+                          <div className="flex-1">
+                            <div className="text-sm font-medium text-gray-800 truncate">
+                              {reward.goalTitle}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {formatPeriodDisplay(reward.periodType)} • 
+                              {reward.daysAchieved}/{reward.totalDaysInPeriod} dias • 
+                              {Math.round(reward.completionRate)}%
+                            </div>
+                            <div className="text-xs text-blue-600">
+                              Diário: {formatCurrency(centavosToReais(reward.dailyValue))}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-sm font-bold text-green-600">
+                              {formatCurrency(centavosToReais(reward.earnedAmount))}
+                            </div>
+                            <div className="text-xs text-gray-400">
+                              de {formatCurrency(centavosToReais(reward.totalMonetaryValue))}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      
+                      {rewardStats.rewardsByPeriod.length > 3 && (
+                        <div className="text-xs text-gray-500 text-center py-1">
+                          +{rewardStats.rewardsByPeriod.length - 3} metas adicionais
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {(!rewardStats?.rewardsByPeriod || rewardStats.rewardsByPeriod.length === 0) && (
+                    <div className="text-center py-4 text-gray-500">
+                      <div className="text-sm">Nenhuma meta com recompensa monetária encontrada</div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

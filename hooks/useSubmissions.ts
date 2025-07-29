@@ -1,6 +1,7 @@
 /**
  * Hook para gerenciar submissões de checklist
  * Busca, cria e filtra submissões baseado no perfil do usuário logado
+ * Inclui funcionalidades para cálculo de recompensas monetárias
  */
 
 import { useEffect, useState } from 'react';
@@ -10,6 +11,7 @@ import { format } from 'date-fns';
 import { useAuth } from './useAuth';
 import { Role } from '@/lib/roles';
 import { logger } from '@/lib/logger';
+import { calculateUserRewards, calculateMonthlyEarnings, type UserRewardStats } from '@/lib/rewards';
 
 export function useSubmissions() {
   const { profile, loading: authLoading } = useAuth();
@@ -158,6 +160,25 @@ export function useSubmissions() {
     return { completed, total, percentage };
   };
 
+  // Funcionalidades de recompensas monetárias
+  const calculateRewards = (goals: any[], userId?: string): UserRewardStats | null => {
+    const targetUserId = userId || profile?.userId;
+    if (!targetUserId || !goals.length) {
+      return null;
+    }
+
+    return calculateUserRewards(goals, submissions, targetUserId);
+  };
+
+  const getMonthlyEarnings = (goals: any[], month: Date, userId?: string): number => {
+    const targetUserId = userId || profile?.userId;
+    if (!targetUserId || !goals.length) {
+      return 0;
+    }
+
+    return calculateMonthlyEarnings(goals, submissions, targetUserId, month);
+  };
+
   return {
     submissions,
     loading,
@@ -166,6 +187,8 @@ export function useSubmissions() {
     hasSubmissionToday,
     getSubmissionsByDateRange,
     getCompletionStats,
+    calculateRewards,
+    getMonthlyEarnings,
     refetch: fetchSubmissions
   };
 }

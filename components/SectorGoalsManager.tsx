@@ -6,8 +6,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { toast } from 'sonner';
-import { Plus, Edit, Trash2, Users, Target, Clock, TrendingUp } from 'lucide-react';
+import { Plus, Edit, Trash2, Users, Target, Clock, TrendingUp, MapPin, Award, CheckSquare, DollarSign, UserCheck, ChevronDown, ChevronRight } from 'lucide-react';
 import { useSectorGoals, type CreateSectorGoalData, type UpdateSectorGoalData } from '@/hooks/useSectorGoals';
 import { useAllProfiles } from '@/hooks/useAllProfiles';
 import { Sector, GoalType, GoalPeriod, GoalScope, type SectorGoal } from '@/lib/appwrite';
@@ -48,11 +49,61 @@ export function SectorGoalsManager() {
   const [selectedSectorFilter, setSelectedSectorFilter] = useState<Sector | 'all'>('all');
   const [selectedScopeFilter, setSelectedScopeFilter] = useState<GoalScope | 'all'>('all');
   const [currentStep, setCurrentStep] = useState<"type" | "details">("type");
+  const [expandedGoals, setExpandedGoals] = useState<Set<string>>(new Set());
   
   // Função para obter o nome do usuário pelo ID
   const getUserNameById = (userId: string): string => {
     const profile = profiles.find(p => p.userId === userId);
     return profile ? profile.name : 'Usuário não encontrado';
+  };
+
+  // Função para obter o ícone baseado no tipo de meta
+  const getGoalTypeIcon = (type: GoalType) => {
+    switch (type) {
+      case GoalType.NUMERIC:
+      case GoalType.PERCENTAGE:
+        return <TrendingUp className="h-4 w-4" />;
+      case GoalType.BOOLEAN_CHECKLIST:
+        return <CheckSquare className="h-4 w-4" />;
+      case GoalType.TASK_COMPLETION:
+        return <Target className="h-4 w-4" />;
+      default:
+        return <Target className="h-4 w-4" />;
+    }
+  };
+
+  // Função para obter a cor do badge baseada no tipo
+  const getGoalTypeColor = (type: GoalType) => {
+    switch (type) {
+      case GoalType.NUMERIC:
+      case GoalType.PERCENTAGE:
+        return "bg-blue-100 text-blue-700";
+      case GoalType.BOOLEAN_CHECKLIST:
+        return "bg-purple-100 text-purple-700";
+      case GoalType.TASK_COMPLETION:
+        return "bg-green-100 text-green-700";
+      default:
+        return "bg-gray-100 text-gray-700";
+    }
+  };
+
+  // Função para formatar o valor da meta
+  const formatGoalValue = (goal: SectorGoal) => {
+    if (goal.type === GoalType.NUMERIC || goal.type === GoalType.PERCENTAGE) {
+      return `${goal.targetValue}${goal.type === GoalType.PERCENTAGE ? '%' : goal.unit ? ` ${goal.unit}` : ''}`;
+    }
+    return goal.type === GoalType.TASK_COMPLETION ? 'Tarefa' : 'Checklist';
+  };
+
+  // Função para alternar expansão do card
+  const toggleGoalExpansion = (goalId: string) => {
+    const newExpanded = new Set(expandedGoals);
+    if (newExpanded.has(goalId)) {
+      newExpanded.delete(goalId);
+    } else {
+      newExpanded.add(goalId);
+    }
+    setExpandedGoals(newExpanded);
   };
   
   // Carregar metas relevantes com base no perfil do usuário
@@ -273,16 +324,17 @@ export function SectorGoalsManager() {
 
   return (
     <div className="space-y-6">
+      {/* Header melhorado */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Gerenciamento de Metas</h2>
-          <p className="text-muted-foreground">
-            Crie e gerencie metas para os diferentes setores
+          <h2 className="text-2xl font-bold tracking-tight text-gray-900">Gerenciamento de Metas</h2>
+          <p className="text-gray-600 mt-1">
+            Configure e gerencie metas para setores e colaboradores
           </p>
         </div>
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={resetForm}>
+            <Button onClick={resetForm} className="bg-blue-600 hover:bg-blue-700">
               <Plus className="h-4 w-4 mr-2" />
               Nova Meta
             </Button>
@@ -311,9 +363,10 @@ export function SectorGoalsManager() {
         </Dialog>
       </div>
 
-      <div className="flex items-center space-x-4">
+      {/* Filtros melhorados */}
+      <div className="flex items-center space-x-4 bg-white p-4 rounded-lg border">
         <Select value={selectedSectorFilter} onValueChange={(value) => setSelectedSectorFilter(value as Sector | 'all')}>
-          <SelectTrigger className="w-40">
+          <SelectTrigger className="w-48">
             <SelectValue placeholder="Filtrar por setor" />
           </SelectTrigger>
           <SelectContent>
@@ -325,7 +378,7 @@ export function SectorGoalsManager() {
         </Select>
         
         <Select value={selectedScopeFilter} onValueChange={(value) => setSelectedScopeFilter(value as GoalScope | 'all')}>
-          <SelectTrigger className="w-40">
+          <SelectTrigger className="w-48">
             <SelectValue placeholder="Tipo de meta" />
           </SelectTrigger>
           <SelectContent>
@@ -335,136 +388,216 @@ export function SectorGoalsManager() {
           </SelectContent>
         </Select>
         
-        <div className="text-sm text-muted-foreground">
+        <div className="text-sm text-gray-600 bg-gray-50 px-3 py-1 rounded-full">
           {filteredGoals.length} meta(s) encontrada(s)
         </div>
       </div>
 
       {error && (
-        <Card className="border-destructive">
-          <CardContent className="p-6">
-            <div className="text-destructive">Erro: {error}</div>
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="p-4">
+            <div className="text-red-800">Erro: {error}</div>
           </CardContent>
         </Card>
       )}
 
       {loading ? (
         <div className="flex justify-center items-center p-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         </div>
       ) : filteredGoals.length === 0 ? (
-        <div className="bg-muted/50 p-8 rounded-lg text-center">
-          <p className="text-muted-foreground">Nenhuma meta encontrada</p>
+        <div className="bg-gray-50 p-8 rounded-lg text-center">
+          <Target className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+          <p className="text-gray-600 font-medium">Nenhuma meta encontrada</p>
+          <p className="text-gray-500 text-sm mt-1">Crie sua primeira meta para começar</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {filteredGoals.map(goal => (
-            <Card
+            <Collapsible
               key={goal.$id}
-              className="overflow-hidden transition-shadow hover:shadow-md flex flex-col h-full min-h-[260px]"
-              style={{ minHeight: 260 }}
+              open={expandedGoals.has(goal.$id!)}
+              onOpenChange={() => toggleGoalExpansion(goal.$id!)}
             >
-              <CardHeader>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle className="flex items-center gap-2">
-                      {goal.title}
-                      {goal.scope === GoalScope.INDIVIDUAL && (
-                        <Badge className="bg-blue-500 hover:bg-blue-600 text-white">Individual</Badge>
-                      )}
-                      {!goal.isActive && (
-                        <Badge variant="outline" className="text-muted-foreground">Inativa</Badge>
-                      )}
-                    </CardTitle>
-                    <p className="text-sm text-muted-foreground mt-1">{goal.description}</p>
+              <Card className="overflow-hidden transition-all duration-200 hover:shadow-md border border-gray-200 bg-white">
+                {/* Header compacto do card */}
+                <CollapsibleTrigger asChild>
+                  <div className="p-4 cursor-pointer hover:bg-gray-50 transition-colors">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-lg font-semibold text-gray-900 truncate mb-1">
+                          {goal.title}
+                        </h3>
+                        <p className="text-sm text-gray-600 truncate mb-2">
+                          {goal.description}
+                        </p>
+                        
+                        {/* Badges compactos */}
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge className={getGoalTypeColor(goal.type)}>
+                            {getGoalTypeIcon(goal.type)}
+                            <span className="ml-1 text-xs">
+                              {goal.type === GoalType.NUMERIC ? 'Numérico' : 
+                               goal.type === GoalType.PERCENTAGE ? 'Porcentagem' : 
+                               goal.type === GoalType.TASK_COMPLETION ? 'Tarefa' : 'Checklist'}
+                            </span>
+                          </Badge>
+                          
+                          {goal.scope === GoalScope.INDIVIDUAL && (
+                            <Badge className="bg-blue-100 text-blue-700 text-xs">
+                              <UserCheck className="h-3 w-3 mr-1" />
+                              Individual
+                            </Badge>
+                          )}
+                          
+                          {!goal.isActive && (
+                            <Badge variant="outline" className="text-gray-500 text-xs">
+                              Inativa
+                            </Badge>
+                          )}
+                        </div>
+
+                        {/* Informações básicas em grid compacto */}
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="flex items-center gap-2">
+                            <MapPin className="h-3 w-3 text-blue-600" />
+                            <span className="text-xs text-gray-600">
+                              {sectorDisplayNames[goal.sectorId as Sector] || goal.sectorId}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Target className="h-3 w-3 text-green-600" />
+                            <span className="text-xs text-gray-600">
+                              {formatGoalValue(goal)}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-3 w-3 text-orange-600" />
+                            <span className="text-xs text-gray-600">
+                              {goalPeriodDisplayNames[goal.period]}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <CheckSquare className="h-3 w-3 text-purple-600" />
+                            <span className="text-xs text-gray-600">
+                              {goal.checklistItems?.length || 0} itens
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Ações e ícone de expansão */}
+                      <div className="flex items-center gap-1 ml-4">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditClick(goal);
+                          }}
+                          className="text-gray-600 hover:text-blue-600"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                                                 <Switch 
+                           checked={goal.isActive} 
+                           onCheckedChange={(checked) => {
+                             handleToggleStatus(goal.$id!, goal.isActive);
+                           }}
+                           className="ml-1"
+                         />
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Esta ação não pode ser desfeita. A meta será excluída permanentemente.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleDeleteGoal(goal.$id!)}
+                                className="bg-red-600 text-white hover:bg-red-700"
+                              >
+                                Excluir
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                        <div className="ml-2">
+                          {expandedGoals.has(goal.$id!) ? (
+                            <ChevronDown className="h-4 w-4 text-gray-500" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4 text-gray-500" />
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </CollapsibleTrigger>
+
+                {/* Conteúdo expandido */}
+                <CollapsibleContent>
+                  <div className="border-t border-gray-100 p-4 space-y-4">
+                    {/* Informações do usuário atribuído */}
                     {goal.scope === GoalScope.INDIVIDUAL && goal.assignedUserId && (
-                      <p className="text-sm text-muted-foreground flex items-center mt-1">
-                        <Users className="h-3 w-3 mr-1" />
-                        {profiles.find(p => p.$id === goal.assignedUserId)?.name || "Usuário Atribuído"}
-                      </p>
+                      <div className="flex items-center gap-2 text-sm text-gray-600 bg-blue-50 px-3 py-2 rounded-lg">
+                        <Users className="h-4 w-4 text-blue-600" />
+                        <span className="font-medium">Usuário Atribuído:</span>
+                        <span>{getUserNameById(goal.assignedUserId)}</span>
+                      </div>
+                    )}
+
+                    {/* Recompensa monetária */}
+                    {goal.hasMonetaryReward && goal.monetaryValue && (
+                      <div className="flex items-center gap-2 text-sm bg-green-50 px-3 py-2 rounded-lg">
+                        <DollarSign className="h-4 w-4 text-green-600" />
+                        <span className="font-medium">Recompensa:</span>
+                        <span className="text-green-700 font-semibold">
+                          {formatCurrency(centavosToReais(goal.monetaryValue))} - {goalPeriodDisplayNames[goal.period]}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Descrição completa */}
+                    {goal.description && (
+                      <div className="text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded-lg">
+                        <span className="font-medium">Descrição:</span>
+                        <p className="mt-1">{goal.description}</p>
+                      </div>
+                    )}
+
+                    {/* Itens do checklist se houver */}
+                    {goal.checklistItems && goal.checklistItems.length > 0 && (
+                      <div className="text-sm">
+                        <span className="font-medium text-gray-700">Itens do Checklist:</span>
+                        <ul className="mt-2 space-y-1">
+                          {goal.checklistItems.map((item, index) => (
+                            <li key={index} className="flex items-center gap-2 text-gray-600">
+                              <CheckSquare className="h-3 w-3 text-purple-600" />
+                              {item}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                     )}
                   </div>
-                  <div className="flex space-x-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleEditClick(goal)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Switch 
-                      checked={goal.isActive} 
-                      onCheckedChange={() => handleToggleStatus(goal.$id!, goal.isActive)}
-                    />
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="sm" className="text-destructive">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Esta ação não pode ser desfeita. A meta será excluída permanentemente.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => handleDeleteGoal(goal.$id!)}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          >
-                            Excluir
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="flex items-center space-x-2">
-                    <Target className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <div className="text-sm font-medium">{goal.sectorId}</div>
-                      <div className="text-xs text-muted-foreground">Setor</div>
-                    </div>
-                  </div>
-                  
-                  {/* Informação de usuário não será mostrada já que não temos como salvar esse dado no backend */}
-                  <div className="flex items-center space-x-2">
-                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <div className="text-sm font-medium">
-                        {goal.targetValue} {goal.type}
-                      </div>
-                      <div className="text-xs text-muted-foreground">Meta</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <div className="text-sm font-medium">{goalPeriodDisplayNames[goal.period]}</div>
-                      <div className="text-xs text-muted-foreground">Período</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Users className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <div className="text-sm font-medium">
-                        {goal.checklistItems?.length || 0} itens
-                      </div>
-                      <div className="text-xs text-muted-foreground">Checklist</div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))
-        }
-      </div>
+                </CollapsibleContent>
+              </Card>
+            </Collapsible>
+          ))}
+        </div>
       )}
 
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
@@ -487,3 +620,4 @@ export function SectorGoalsManager() {
     </div>
   );
 }
+
