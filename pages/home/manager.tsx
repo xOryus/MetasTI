@@ -666,65 +666,68 @@ export default function ManagerDashboard() {
   const tendenciaCrescimento = generateTendenciaCrescimento();
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header Corporativo */}
-      <div className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-[1600px] mx-auto px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-                <BarChart3 className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h1 className="text-lg font-semibold text-gray-900">
-                  Dashboard Gerencial - {profile.sector}
-                </h1>
-                <p className="text-xs text-gray-500">
-                  Sistema Inteligente de Monitoramento
-                </p>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      {/* Header Modernizado */}
+      <div className="bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-800 shadow-lg">
+        <div className="w-full px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-6">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                  <BarChart3 className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold text-white">
+                    Dashboard Gerencial - {profile.sector}
+                  </h1>
+                  <div className="flex items-center space-x-2 text-blue-100">
+                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                    <p className="text-sm font-medium">
+                      Bem-vindo, {profile.name || (profile.role === 'manager' ? 'Gestor' : profile.role)}
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
-            <div className="flex items-center gap-4">
-              <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-green-50 rounded-full border border-green-200">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                <span className="text-xs font-medium text-green-700">Sistema Ativo</span>
+            
+            <div className="flex items-center space-x-3">
+              <div className="hidden sm:flex items-center space-x-2 text-blue-100">
+                <div className="w-2 h-2 bg-blue-300 rounded-full"></div>
+                <span className="text-sm font-medium">
+                  {format(new Date(), 'dd/MM/yyyy')}
+                </span>
               </div>
               <Button 
                 onClick={handleLogout} 
                 variant="outline"
-                size="sm"
-                className="border-gray-200 hover:bg-gray-50 text-sm"
+                className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:border-white/30 transition-all duration-200"
               >
-                Sair
+                <div className="flex items-center space-x-2">
+                  <div className="w-4 h-4 bg-white/20 rounded-full"></div>
+                  <span>Sair</span>
+                </div>
               </Button>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-[1600px] mx-auto px-6 lg:px-8 py-6">
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
         
-        {/* Cards de Ação Rápida - Layout Profissional */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-8 mb-12">
+        {/* Cards de Ação Rápida - Layout Moderno */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {actionCards.map((card, index) => {
             const IconComponent = card.icon;
             const isPositive = card.title.includes('Top') || card.title.includes('Performance');
             const isNegative = card.title.includes('Atenção');
             
             return (
-              <Card key={index} className="group relative overflow-hidden border-0 shadow-xl hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 bg-gradient-to-br from-white via-white to-gray-50/50">
-                {/* Gradiente de fundo decorativo */}
-                <div className={`absolute inset-0 opacity-5 bg-gradient-to-br ${
-                  isPositive ? 'from-green-400 to-blue-500' :
-                  isNegative ? 'from-red-400 to-orange-500' :
-                  'from-purple-400 to-indigo-500'
-                }`}></div>
-                
-                <CardContent className="p-8 relative">
-                  <div className="flex items-start justify-between mb-6">
+              <Card key={index} className="group relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300 bg-white">
+                <CardContent className="p-6 relative">
+                  <div className="flex items-start justify-between mb-4">
                     <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className={`p-3 rounded-2xl shadow-lg ${
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className={`p-3 rounded-xl shadow-md ${
                           isPositive ? 'bg-gradient-to-br from-green-100 to-blue-100' :
                           isNegative ? 'bg-gradient-to-br from-red-100 to-orange-100' :
                           'bg-gradient-to-br from-purple-100 to-indigo-100'
@@ -738,8 +741,8 @@ export default function ManagerDashboard() {
                         </div>
                       </div>
                       
-                      <div className="space-y-3">
-                        <p className={`text-4xl font-bold ${card.color} leading-none`}>
+                      <div className="space-y-2">
+                        <p className={`text-3xl font-bold ${card.color} leading-none`}>
                           {card.value}{card.title.includes('Performance') ? '%' : ''}
                         </p>
                         
@@ -748,12 +751,12 @@ export default function ManagerDashboard() {
                         </p>
                         
                         {card.action && (
-                          <div className="pt-4">
+                          <div className="pt-3">
                             <Button 
                               variant="ghost" 
                               size="sm" 
                               onClick={() => handleCardAction(card.action!)}
-                              className="group-hover:bg-blue-50 group-hover:text-blue-700 transition-all duration-200 rounded-xl px-4 py-2 text-xs font-semibold hover:shadow-md"
+                              className="group-hover:bg-blue-50 group-hover:text-blue-700 transition-all duration-200 rounded-lg px-3 py-1 text-xs font-semibold hover:shadow-md"
                             >
                               {card.action} 
                               <TrendingUp className="w-3 h-3 ml-2" />
@@ -766,7 +769,7 @@ export default function ManagerDashboard() {
                   
                   {/* Indicador de trend */}
                   <div className="absolute top-4 right-4">
-                    <div className={`px-3 py-1 rounded-full text-xs font-bold ${
+                    <div className={`px-2 py-1 rounded-full text-xs font-bold ${
                       card.trend > 0 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
                     }`}>
                       {card.trend > 0 ? '+' : ''}{Math.round(card.trend)}%
@@ -778,21 +781,21 @@ export default function ManagerDashboard() {
           })}
         </div>
 
-        {/* Alertas Inteligentes - Design Corporativo */}
+        {/* Alertas Inteligentes - Design Moderno */}
         {alerts.length > 0 && (
           <div className="mb-8">
-            <Card className="border border-gray-200 shadow-sm overflow-hidden">
-              {/* Cabeçalho com toggle - estilo profissional */}
+            <Card className="border-0 shadow-lg bg-white overflow-hidden">
+              {/* Cabeçalho com toggle - estilo moderno */}
               <div 
                 className="flex items-center justify-between px-6 py-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors"
                 onClick={() => setIsAlertsMinimized(!isAlertsMinimized)}
               >
                 <div className="flex items-center gap-3">
-                  <div className="bg-red-100 p-2 rounded-md">
+                  <div className="bg-red-100 p-2 rounded-lg">
                     <AlertTriangle className="w-5 h-5 text-red-600" />
                   </div>
                   <div>
-                    <h2 className="text-base font-medium text-gray-900">Alertas Inteligentes</h2>
+                    <h2 className="text-lg font-semibold text-gray-900">Alertas Inteligentes</h2>
                     <p className="text-sm text-gray-500">Monitoramento proativo para tomada de decisão</p>
                   </div>
                 </div>
@@ -822,41 +825,32 @@ export default function ManagerDashboard() {
                 }`}
               >
                 <div className="p-5">
-                  {/* Alerta resumido em formato horizontal - mais compacto e profissional */}
-                  <div className="space-y-4">
+                  {/* Alertas em formato moderno e clean */}
+                  <div className="space-y-3">
                     {alerts.map((alert, index) => (
                       <div 
                         key={index} 
-                        className={`flex items-center border rounded-lg shadow-sm overflow-hidden ${
-                          alert.type === 'risk' ? 'border-red-200 bg-white' :
-                          alert.type === 'warning' ? 'border-amber-200 bg-white' :
-                          'border-green-200 bg-white'
+                        className={`flex items-center border-0 rounded-lg shadow-sm overflow-hidden bg-gradient-to-r ${
+                          alert.type === 'risk' ? 'from-red-50 to-red-100 border-l-4 border-red-500' :
+                          alert.type === 'warning' ? 'from-amber-50 to-amber-100 border-l-4 border-amber-500' :
+                          'from-green-50 to-green-100 border-l-4 border-green-500'
                         }`}
                       >
-                        {/* Indicador de tipo (barra vertical) */}
-                        <div 
-                          className={`self-stretch w-1.5 ${
-                            alert.type === 'risk' ? 'bg-red-500' :
-                            alert.type === 'warning' ? 'bg-amber-500' :
-                            'bg-green-500'
-                          }`}
-                        />
-                        
                         {/* Ícone */}
                         <div className={`p-4 ${
                           alert.type === 'risk' ? 'text-red-600' :
                           alert.type === 'warning' ? 'text-amber-600' :
                           'text-green-600'
                         }`}>
-                          {alert.type === 'risk' ? <XCircle className="h-6 w-6" /> :
-                           alert.type === 'warning' ? <Clock className="h-6 w-6" /> :
-                           <CheckCircle className="h-6 w-6" />}
+                          {alert.type === 'risk' ? <XCircle className="h-5 w-5" /> :
+                           alert.type === 'warning' ? <Clock className="h-5 w-5" /> :
+                           <CheckCircle className="h-5 w-5" />}
                         </div>
                         
                         {/* Conteúdo do alerta */}
-                        <div className="py-4 px-2 flex-1">
+                        <div className="py-3 px-2 flex-1">
                           <div className="flex items-center justify-between">
-                            <h4 className={`font-medium ${
+                            <h4 className={`font-semibold ${
                               alert.type === 'risk' ? 'text-red-900' :
                               alert.type === 'warning' ? 'text-amber-900' :
                               'text-green-900'
@@ -864,9 +858,9 @@ export default function ManagerDashboard() {
                               {alert.title}
                             </h4>
                             <Badge className={`ml-2 ${
-                              alert.type === 'risk' ? 'bg-red-100 text-red-800 hover:bg-red-200' :
-                              alert.type === 'warning' ? 'bg-amber-100 text-amber-800 hover:bg-amber-200' :
-                              'bg-green-100 text-green-800 hover:bg-green-200'
+                              alert.type === 'risk' ? 'bg-red-200 text-red-800' :
+                              alert.type === 'warning' ? 'bg-amber-200 text-amber-800' :
+                              'bg-green-200 text-green-800'
                             }`}>
                               {alert.count}
                             </Badge>
@@ -878,14 +872,14 @@ export default function ManagerDashboard() {
                         
                         {/* Botão de ação */}
                         {alert.action && (
-                          <div className="p-4 border-l border-gray-100">
+                          <div className="p-3 border-l border-gray-200">
                             <Button
                               variant="ghost"
                               size="sm"
                               className={`whitespace-nowrap ${
-                                alert.type === 'risk' ? 'text-red-700 hover:text-red-800 hover:bg-red-50' :
-                                alert.type === 'warning' ? 'text-amber-700 hover:text-amber-800 hover:bg-amber-50' :
-                                'text-green-700 hover:text-green-800 hover:bg-green-50'
+                                alert.type === 'risk' ? 'text-red-700 hover:text-red-800 hover:bg-red-100' :
+                                alert.type === 'warning' ? 'text-amber-700 hover:text-amber-800 hover:bg-amber-100' :
+                                'text-green-700 hover:text-green-800 hover:bg-green-100'
                               }`}
                             >
                               {alert.action}
@@ -904,32 +898,27 @@ export default function ManagerDashboard() {
         {/* Ranking de Colaboradores e Gráficos - Layout Premium */}
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-10 mb-12">
           
-          {/* Ranking de Colaboradores - Design Premium */}
+          {/* Ranking de Colaboradores - Design Moderno */}
           <div className="xl:col-span-5">
-            <Card className="h-full shadow-lg border border-yellow-100/50 bg-gradient-to-br from-white via-yellow-50/15 to-orange-50/15 overflow-hidden rounded-xl">
-              {/* Header com gradiente */}
-              <div className="bg-gradient-to-r from-yellow-400 to-orange-500 p-1">
-                <CardHeader className="bg-white/95 backdrop-blur-sm rounded-t-lg">
-                  <CardTitle className="flex items-center gap-3">
-                    <div className="p-2 bg-yellow-100 rounded-xl">
-                      <Trophy className="w-6 h-6 text-yellow-600" />
-                    </div>
-                    <div>
-                      <span className="text-xl font-bold text-gray-900">Ranking - {profile.sector}</span>
-                      <p className="text-sm font-normal text-gray-600 mt-1">
-                        Top 5 colaboradores por performance
-                      </p>
-                    </div>
-                  </CardTitle>
-                </CardHeader>
-              </div>
+            <Card className="h-full shadow-lg border-0 bg-white overflow-hidden">
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center gap-3">
+                  <div className="w-1 h-8 bg-gradient-to-b from-yellow-500 to-orange-500 rounded-full"></div>
+                  <div>
+                    <span className="text-xl font-bold text-gray-900">Ranking - {profile.sector}</span>
+                    <p className="text-sm font-normal text-gray-600 mt-1">
+                      Top 5 colaboradores por performance
+                    </p>
+                  </div>
+                </CardTitle>
+              </CardHeader>
               
-              <CardContent className="p-8">
-                <div className="space-y-6">
+                              <CardContent className="p-6">
+                  <div className="space-y-4">
                   {collaboratorRankings.slice(0, 5).map((ranking, index) => (
                     <div 
                       key={ranking.id}
-                      className="group relative p-6 rounded-2xl bg-gradient-to-r from-white via-gray-50/50 to-blue-50/30 hover:from-blue-50 hover:via-indigo-50 hover:to-purple-50 border-2 border-gray-100 hover:border-blue-200 shadow-lg hover:shadow-xl transition-all duration-500 cursor-pointer transform hover:-translate-y-1"
+                      className="group relative p-4 rounded-lg bg-white hover:bg-gray-50 border border-gray-200 hover:border-blue-300 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer"
                       onClick={() => {
                         const collaborator = profiles.find(p => p.$id === ranking.id);
                         if (collaborator) {
@@ -939,33 +928,33 @@ export default function ManagerDashboard() {
                       }}
                     >
                       {/* Posição de destaque */}
-                      <div className="absolute -top-3 -left-3">
-                        <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold shadow-lg ${
-                          index === 0 ? 'bg-gradient-to-br from-yellow-400 to-yellow-500 text-yellow-900' :
-                          index === 1 ? 'bg-gradient-to-br from-gray-300 to-gray-400 text-gray-800' :
-                          index === 2 ? 'bg-gradient-to-br from-orange-400 to-orange-500 text-orange-900' :
-                          'bg-gradient-to-br from-blue-400 to-blue-500 text-blue-900'
+                      <div className="absolute -top-2 -left-2">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shadow-md ${
+                          index === 0 ? 'bg-yellow-500 text-yellow-900' :
+                          index === 1 ? 'bg-gray-400 text-gray-800' :
+                          index === 2 ? 'bg-orange-500 text-orange-900' :
+                          'bg-blue-500 text-blue-900'
                         }`}>
                           {index + 1}
                         </div>
                       </div>
                       
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4 ml-6">
+                      <div className="flex items-center justify-between ml-6">
+                        <div className="flex items-center gap-4">
                           <div className="flex-1">
-                            <h3 className="font-bold text-lg text-gray-900 group-hover:text-blue-700 transition-colors">
+                            <h3 className="font-semibold text-lg text-gray-900 group-hover:text-blue-700 transition-colors">
                               {ranking.name}
                             </h3>
-                            <div className="flex items-center gap-4 mt-2">
-                              <div className="flex items-center gap-2">
-                                <Zap className="w-4 h-4 text-purple-500" />
-                                <span className="text-sm font-medium text-gray-600">
-                                  Streak: {ranking.streak} dias
+                            <div className="flex items-center gap-4 mt-1">
+                              <div className="flex items-center gap-1">
+                                <Zap className="w-3 h-3 text-purple-500" />
+                                <span className="text-xs text-gray-600">
+                                  {ranking.streak} dias
                                 </span>
                               </div>
-                              <div className="flex items-center gap-2">
-                                <Calendar className="w-4 h-4 text-blue-500" />
-                                <span className="text-sm font-medium text-gray-600">
+                              <div className="flex items-center gap-1">
+                                <Calendar className="w-3 h-3 text-blue-500" />
+                                <span className="text-xs text-gray-600">
                                   {ranking.submissionsThisWeek} esta semana
                                 </span>
                               </div>
@@ -974,15 +963,15 @@ export default function ManagerDashboard() {
                         </div>
                         
                         <div className="text-right">
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2">
                             <div className="text-right">
-                              <p className="text-3xl font-bold text-gray-900">{ranking.completionRate}%</p>
+                              <p className="text-2xl font-bold text-gray-900">{ranking.completionRate}%</p>
                               <p className="text-xs text-gray-500">Taxa de conclusão</p>
                             </div>
-                            <div className={`px-3 py-1 rounded-full text-xs font-bold shadow-md ${
-                              ranking.status === 'active' ? 'bg-green-100 text-green-800 border border-green-200' :
-                              ranking.status === 'risk' ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' :
-                              'bg-red-100 text-red-800 border border-red-200'
+                            <div className={`px-2 py-1 rounded-full text-xs font-bold ${
+                              ranking.status === 'active' ? 'bg-green-100 text-green-800' :
+                              ranking.status === 'risk' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-red-100 text-red-800'
                             }`}>
                               {ranking.status === 'active' ? '🟢 Ativo' :
                                ranking.status === 'risk' ? '🟡 Atenção' : '🔴 Inativo'}
@@ -992,13 +981,13 @@ export default function ManagerDashboard() {
                       </div>
                       
                       {/* Barra de progresso */}
-                      <div className="mt-4 ml-6">
-                        <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="mt-3 ml-6">
+                        <div className="w-full bg-gray-200 rounded-full h-1.5">
                           <div 
-                            className={`h-2 rounded-full transition-all duration-1000 ${
-                              ranking.completionRate >= 80 ? 'bg-gradient-to-r from-green-400 to-green-500' :
-                              ranking.completionRate >= 60 ? 'bg-gradient-to-r from-yellow-400 to-yellow-500' :
-                              'bg-gradient-to-r from-red-400 to-red-500'
+                            className={`h-1.5 rounded-full transition-all duration-1000 ${
+                              ranking.completionRate >= 80 ? 'bg-green-500' :
+                              ranking.completionRate >= 60 ? 'bg-yellow-500' :
+                              'bg-red-500'
                             }`}
                             style={{ width: `${ranking.completionRate}%` }}
                           ></div>
@@ -1011,78 +1000,64 @@ export default function ManagerDashboard() {
             </Card>
           </div>
 
-          {/* Gráficos - Design Premium */}
-          <div className="xl:col-span-7 space-y-8">
+          {/* Gráficos - Design Moderno */}
+          <div className="xl:col-span-7 space-y-6">
             
             {/* Performance Semanal */}
-            <Card className="shadow-lg border border-blue-100/50 bg-gradient-to-br from-white via-blue-50/15 to-indigo-50/15 overflow-hidden rounded-xl">
-              <div className="bg-gradient-to-r from-blue-500 to-indigo-600 p-1">
-                <CardHeader className="bg-white/95 backdrop-blur-sm rounded-t-lg">
-                  <CardTitle className="flex items-center gap-3 text-blue-700">
-                    <div className="p-2 bg-blue-100 rounded-xl">
-                      <TrendingUp className="w-6 h-6 text-blue-600" />
-                    </div>
-                    <div>
-                      <span className="text-xl font-bold">Performance Semanal</span>
-                      <p className="text-sm font-normal text-gray-600 mt-1">
-                        Evolução dos últimos 7 dias
-                      </p>
-                    </div>
-                  </CardTitle>
-                </CardHeader>
-              </div>
-              <CardContent className="p-8">
-                <div className="bg-white/80 rounded-2xl p-6 shadow-inner">
-                  <Chart 
-                    data={performanceSemanal} 
-                    type="line" 
-                    title=""
-                  />
-                </div>
+            <Card className="shadow-lg border-0 bg-white">
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center gap-3">
+                  <div className="w-1 h-8 bg-gradient-to-b from-blue-500 to-indigo-600 rounded-full"></div>
+                  <div>
+                    <span className="text-xl font-bold text-gray-900">Performance Semanal</span>
+                    <p className="text-sm font-normal text-gray-600 mt-1">
+                      Evolução dos últimos 7 dias
+                    </p>
+                  </div>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                <Chart 
+                  data={performanceSemanal} 
+                  type="line" 
+                  title=""
+                />
               </CardContent>
             </Card>
 
             {/* Tendência de Crescimento */}
-            <Card className="shadow-lg border border-purple-100/50 bg-gradient-to-br from-white via-purple-50/15 to-pink-50/15 overflow-hidden rounded-xl">
-              <div className="bg-gradient-to-r from-purple-500 to-pink-600 p-1">
-                <CardHeader className="bg-white/95 backdrop-blur-sm rounded-t-lg">
-                  <CardTitle className="flex items-center gap-3 text-purple-700">
-                    <div className="p-2 bg-purple-100 rounded-xl">
-                      <BarChart3 className="w-6 h-6 text-purple-600" />
-                    </div>
-                    <div>
-                      <span className="text-xl font-bold">Tendência de Crescimento</span>
-                      <p className="text-sm font-normal text-gray-600 mt-1">
-                        Análise de evolução temporal
-                      </p>
-                    </div>
-                  </CardTitle>
-                </CardHeader>
-              </div>
-              <CardContent className="p-8">
-                <div className="bg-white/80 rounded-2xl p-6 shadow-inner">
-                  <Chart 
-                    data={tendenciaCrescimento} 
-                    type="line" 
-                    title=""
-                  />
-                </div>
+            <Card className="shadow-lg border-0 bg-white">
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center gap-3">
+                  <div className="w-1 h-8 bg-gradient-to-b from-purple-500 to-pink-600 rounded-full"></div>
+                  <div>
+                    <span className="text-xl font-bold text-gray-900">Tendência de Crescimento</span>
+                    <p className="text-sm font-normal text-gray-600 mt-1">
+                      Análise de evolução temporal
+                    </p>
+                  </div>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                <Chart 
+                  data={tendenciaCrescimento} 
+                  type="line" 
+                  title=""
+                />
               </CardContent>
             </Card>
 
           </div>
         </div>
 
-        {/* Modal de Detalhes do Colaborador - Design Premium */}
+        {/* Modal de Detalhes do Colaborador - Design Moderno */}
         <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-          <DialogContent className="max-w-6xl max-h-[95vh] overflow-y-auto bg-gradient-to-br from-white via-blue-50/30 to-indigo-50/30 border-0 shadow-2xl">
+          <DialogContent className="max-w-6xl max-h-[95vh] overflow-y-auto bg-white border-0 shadow-xl">
             <DialogHeader className="pb-6 border-b border-gray-200">
               <DialogTitle className="flex items-center gap-4 text-2xl">
-                <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl">
-                  <User className="w-6 h-6 text-white" />
-                </div>
+                <div className="w-1 h-8 bg-gradient-to-b from-blue-500 to-indigo-600 rounded-full"></div>
                 <div>
-                  <span className="bg-gradient-to-r from-gray-900 to-blue-800 bg-clip-text text-transparent">
+                  <span className="text-gray-900">
                     Perfil Detalhado - {selectedCollaborator?.name}
                   </span>
                   <p className="text-sm font-normal text-gray-600 mt-1">
@@ -1097,17 +1072,17 @@ export default function ManagerDashboard() {
             
             {selectedCollaborator && (
               <div className="space-y-8 pt-6">
-                {/* Informações Básicas - Card Premium */}
-                <Card className="border border-blue-100/50 shadow-md bg-gradient-to-r from-white to-blue-50/30 rounded-xl">
+                {/* Informações Básicas - Card Moderno */}
+                <Card className="border-0 shadow-lg bg-white">
                   <CardContent className="p-6">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                      <div className="text-center p-4 bg-white rounded-xl shadow-sm">
-                        <User className="w-8 h-8 text-blue-600 mx-auto mb-2" />
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="text-center p-4 bg-gray-50 rounded-lg">
+                        <User className="w-6 h-6 text-blue-600 mx-auto mb-2" />
                         <p className="text-sm text-gray-600">Nome</p>
-                        <p className="font-bold text-gray-900">{selectedCollaborator.name}</p>
+                        <p className="font-semibold text-gray-900">{selectedCollaborator.name}</p>
                       </div>
-                      <div className="text-center p-4 bg-white rounded-xl shadow-sm">
-                        <Target className="w-8 h-8 text-green-600 mx-auto mb-2" />
+                      <div className="text-center p-4 bg-gray-50 rounded-lg">
+                        <Target className="w-6 h-6 text-green-600 mx-auto mb-2" />
                         <p className="text-sm text-gray-600">Setor</p>
                         <p className="font-bold text-gray-900">{selectedCollaborator.sector}</p>
                       </div>
