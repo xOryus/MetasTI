@@ -15,6 +15,7 @@ import { useSectorGoals } from '@/hooks/useSectorGoals';
 import { format, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isWithinInterval, isSameDay } from 'date-fns';
 import { Target, TrendingUp, Calendar, Award } from 'lucide-react';
 import { logger } from '@/lib/logger';
+import { formatCurrency, centavosToReais } from '@/lib/currency';
 
 export default function CollaboratorHome() {
   const { isAuthenticated, profile, logout, loading: authLoading } = useAuth();
@@ -388,6 +389,12 @@ export default function CollaboratorHome() {
                             </span>
                             {(goal.type === 'numeric' || goal.type === 'percentage') && (
                               <span>Meta: {goal.targetValue}{goal.type === 'percentage' ? '%' : ''}</span>
+                            )}
+                            {/* Exibir recompensa monetária se existir */}
+                            {goal.hasMonetaryReward && goal.monetaryValue && (
+                              <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full font-medium">
+                                💰 {formatCurrency(centavosToReais(goal.monetaryValue))}
+                              </span>
                             )}
                           </div>
                         </CardHeader>

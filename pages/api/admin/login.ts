@@ -22,6 +22,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         $id: 'admin',
         userId: 'admin',
         name: 'Administrador',
+        email: 'admin@admin.com',
         sector: Sector.TI,
         role: Role.ADMIN,
         $createdAt: new Date().toISOString(),

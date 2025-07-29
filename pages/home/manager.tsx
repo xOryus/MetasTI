@@ -23,6 +23,8 @@ import {
 import { logger } from '@/lib/logger';
 import { Role } from '@/lib/roles';
 import { account } from '@/lib/appwrite';
+import { formatCurrency, centavosToReais } from '@/lib/currency';
+import { useSectorGoals } from '@/hooks/useSectorGoals';
 
 // Lazy load dos componentes pesados para melhorar LCP
 const ProofImageViewer = lazy(() => import('@/components/ProofImageViewer'));
@@ -36,6 +38,10 @@ interface DashboardMetrics {
   melhorPerformance: { setor: string; taxa: number };
   mediaGeral: number;
   metaMes: number;
+  // Campos monetários
+  totalRecompensasDisponiveis: number; // Total de recompensas monetárias das metas ativas
+  totalPotencialGanhos: number; // Total que pode ser ganho pelos colaboradores
+  valorMedioPorMeta: number; // Valor médio das recompensas
 }
 
 interface AlertItem {
@@ -76,6 +82,7 @@ export default function ManagerDashboard() {
   } = useSubmissions();
 
   const { profiles, loading: profilesLoading } = useAllProfiles();
+  const { goals: sectorGoals, loading: goalsLoading } = useSectorGoals();
 
   // Função helper para formatar mês em português
   const getMonthNameInPortuguese = (date: Date) => {
@@ -114,7 +121,10 @@ export default function ManagerDashboard() {
         crescimentoSemanal: 0,
         melhorPerformance: { setor: '', taxa: 0 },
         mediaGeral: 0,
-        metaMes: 90
+        metaMes: 90,
+        totalRecompensasDisponiveis: 0,
+        totalPotencialGanhos: 0,
+        valorMedioPorMeta: 0
       };
     }
 
@@ -197,6 +207,22 @@ export default function ManagerDashboard() {
     const mediaGeral = allCollaborators.length > 0 ? 
       (totalSubmissionsMonth.length / (allCollaborators.length * daysInMonth)) * 100 : 0;
 
+    // Cálculos monetários
+    const individualGoalsWithRewards = sectorGoals?.filter(goal => 
+      goal.scope === 'individual' && goal.hasMonetaryReward && goal.monetaryValue
+    ) || [];
+
+    const totalRecompensasDisponiveis = individualGoalsWithRewards.reduce((total, goal) => 
+      total + (goal.monetaryValue || 0), 0);
+
+    const activeSectorCollaborators = sectorCollaborators.filter(collab => {
+      return individualGoalsWithRewards.some(goal => goal.assignedUserId === collab.userId);
+    });
+
+    const totalPotencialGanhos = totalRecompensasDisponiveis * activeSectorCollaborators.length;
+    const valorMedioPorMeta = individualGoalsWithRewards.length > 0 ? 
+      totalRecompensasDisponiveis / individualGoalsWithRewards.length : 0;
+
     return {
       taxaConclusao: Math.round(taxaConclusao * 10) / 10,
       usuariosAtivos,
@@ -205,7 +231,11 @@ export default function ManagerDashboard() {
       crescimentoSemanal: Math.round(crescimentoSemanal * 10) / 10,
       melhorPerformance,
       mediaGeral: Math.round(mediaGeral * 10) / 10,
-      metaMes: 90
+      metaMes: 90,
+      // Campos monetários
+      totalRecompensasDisponiveis,
+      totalPotencialGanhos,
+      valorMedioPorMeta
     };
   };
 
@@ -444,8 +474,10 @@ export default function ManagerDashboard() {
     const topPerformers = rankings.filter(r => r.completionRate >= 80).length;
     const topPerformersPercent = (topPerformers / sectorCollaborators.length) * 100;
 
-    // Card 4: Streak médio
-    const averageStreak = rankings.reduce((sum, r) => sum + r.streak, 0) / rankings.length;
+    // Card 4: Recompensas Monetárias
+    const metrics = calculateDashboardMetrics();
+    const totalRecompensas = metrics.totalRecompensasDisponiveis;
+    const valorMedio = metrics.valorMedioPorMeta;
 
     return [
       {
@@ -475,12 +507,12 @@ export default function ManagerDashboard() {
         color: 'text-blue-600'
       },
       {
-        title: 'Streak Médio',
-        value: Math.round(averageStreak),
-        trend: 12, // Placeholder
-        description: 'Dias consecutivos em média',
-        icon: Zap,
-        color: 'text-purple-600'
+        title: 'Recompensas',
+        value: Math.round(centavosToReais(totalRecompensas)),
+        trend: 15, // Placeholder para trend positivo
+        description: `${formatCurrency(centavosToReais(totalRecompensas))} disponíveis`,
+        icon: Award,
+        color: 'text-green-600'
       }
     ];
   };

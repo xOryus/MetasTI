@@ -15,6 +15,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Role } from '@/lib/roles';
 import { Query } from 'appwrite';
 import { GoalForm, GoalFormData, goalPeriodDisplayNames, sectorDisplayNames, goalScopeDisplayNames } from './GoalForm';
+import { centavosToReais, formatCurrency, reaisToCentavos, parseCurrencyInput } from '@/lib/currency';
 
 const initialFormData: GoalFormData = {
   title: '',
@@ -28,7 +29,11 @@ const initialFormData: GoalFormData = {
   isActive: true,
   checklistItems: [],
   scope: GoalScope.SECTOR, // Por padrão, é uma meta setorial
-  assignedUserId: ''
+  assignedUserId: '',
+  // Campos monetários
+  hasMonetaryReward: false,
+  monetaryValue: '',
+  currency: 'BRL'
 };
 
 export function SectorGoalsManager() {
@@ -75,7 +80,7 @@ export function SectorGoalsManager() {
         fetchGoals(queries);
       }
     }
-  }, [profile, fetchGoals]);
+  }, [profile?.role, profile?.sector, profile?.userId]); // Removemos fetchGoals da dependência
 
   // Aplicar filtros por setor e escopo
   const filteredGoals = goals
@@ -107,7 +112,25 @@ export function SectorGoalsManager() {
     }
 
     // Validação para metas individuais (precisamos de um usuário atribuído)
-    // Não validamos mais o campo assignedUserId pois não podemos salvar esse dado no Appwrite
+    if (formData.scope === GoalScope.INDIVIDUAL && !formData.assignedUserId) {
+      toast.error('Selecione o usuário para a meta individual');
+      return;
+    }
+
+    // Validação para campos monetários
+    if (formData.hasMonetaryReward) {
+      if (!formData.monetaryValue || formData.monetaryValue.trim() === '' || formData.monetaryValue === '0' || formData.monetaryValue === '0,00') {
+        toast.error('O valor da recompensa monetária deve ser maior que zero');
+        return;
+      }
+      
+      // Validar se o valor é um número válido
+      const parsedValue = parseCurrencyInput(formData.monetaryValue);
+      if (parsedValue <= 0) {
+        toast.error('Por favor, insira um valor monetário válido');
+        return;
+      }
+    }
 
     // Validações específicas por tipo
     if ((formData.type === GoalType.NUMERIC || formData.type === GoalType.PERCENTAGE) && !formData.targetValue) {
@@ -146,15 +169,22 @@ export function SectorGoalsManager() {
         checklistItems: formData.checklistItems || [],
         // Enviar scope e assignedUserId corretamente
         scope: formData.scope as GoalScope,
-        assignedUserId: formData.scope === GoalScope.INDIVIDUAL ? formData.assignedUserId : undefined
+        assignedUserId: formData.scope === GoalScope.INDIVIDUAL ? formData.assignedUserId : undefined,
+        // Campos monetários
+        hasMonetaryReward: formData.hasMonetaryReward,
+        currency: formData.currency,
+        monetaryValue: formData.hasMonetaryReward && formData.monetaryValue 
+          ? reaisToCentavos(parseCurrencyInput(formData.monetaryValue))
+          : undefined
       };
-
+      
       await createGoal(goalData);
       setIsCreateDialogOpen(false);
       setFormData(initialFormData);
       toast.success('Meta criada com sucesso!');
     } catch (error) {
-      toast.error('Erro ao criar meta');
+      console.error('Erro ao criar meta:', error);
+      toast.error(`Erro ao criar meta: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     }
   };
 
@@ -177,7 +207,13 @@ export function SectorGoalsManager() {
         checklistItems: formData.checklistItems || [],
         // Enviar scope e assignedUserId corretamente
         scope: formData.scope as GoalScope,
-        assignedUserId: formData.scope === GoalScope.INDIVIDUAL ? formData.assignedUserId : undefined
+        assignedUserId: formData.scope === GoalScope.INDIVIDUAL ? formData.assignedUserId : undefined,
+        // Campos monetários
+        hasMonetaryReward: formData.hasMonetaryReward,
+        currency: formData.currency,
+        monetaryValue: formData.hasMonetaryReward && formData.monetaryValue 
+          ? reaisToCentavos(parseCurrencyInput(formData.monetaryValue))
+          : undefined
       };
 
       await updateGoal(editingGoal.$id, updateData);
@@ -220,10 +256,12 @@ export function SectorGoalsManager() {
       period: goal.period,
       isActive: goal.isActive,
       checklistItems: goal.checklistItems || [],
-      // Como não temos como persistir scope e assignedUserId no backend,
-      // vamos sempre definir como setorial
-      scope: GoalScope.SECTOR,
-      assignedUserId: ''
+      scope: goal.scope || GoalScope.SECTOR,
+      assignedUserId: goal.assignedUserId || '',
+      // Campos monetários
+      hasMonetaryReward: goal.hasMonetaryReward || false,
+      monetaryValue: goal.monetaryValue ? String(centavosToReais(goal.monetaryValue)) : '',
+      currency: goal.currency || 'BRL'
     });
     setIsEditDialogOpen(true);
   };

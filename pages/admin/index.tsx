@@ -39,7 +39,7 @@ interface ExtendedUserProfile extends UserProfile {
   $id: string;
   $createdAt: string;
   $updatedAt: string;
-  email?: string;
+  email: string; // Removendo o opcional
   isOrphan?: boolean;
   authExists?: boolean;
   error?: string;

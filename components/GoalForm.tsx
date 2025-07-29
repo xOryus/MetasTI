@@ -10,6 +10,7 @@ import { GoalType, GoalPeriod, Sector, GoalScope } from '@/lib/appwrite';
 import { useAllProfiles } from '@/hooks/useAllProfiles';
 import ChecklistManager from "./ChecklistManager";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { formatCurrency, parseCurrencyInput, isValidCurrencyValue, reaisToCentavos, centavosToReais } from '@/lib/currency';
 
 // Objetos para renderização dos nomes legíveis
 export const sectorDisplayNames: Record<Sector, string> = {
@@ -65,6 +66,10 @@ export interface GoalFormData {
   checklistItems: string[];
   scope: GoalScope | '';
   assignedUserId?: string; // ID do usuário atribuído (para metas individuais)
+  // Campos monetários
+  hasMonetaryReward: boolean;
+  monetaryValue: string; // String para facilitar input formatado
+  currency: string;
 }
 
 interface GoalFormProps {
@@ -442,6 +447,82 @@ export function GoalForm({ formData, handleInputChange, isEdit = false, onStepCh
               </div>
             )}
           </div>
+
+          {/* Seção de Recompensa Monetária */}
+          {formData.scope === GoalScope.INDIVIDUAL && (
+            <div className="space-y-4 border rounded-lg p-4 bg-green-50">
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="hasMonetaryReward"
+                  checked={formData.hasMonetaryReward}
+                  onCheckedChange={(checked) => handleInputChange('hasMonetaryReward', checked)}
+                />
+                <Label htmlFor="hasMonetaryReward" className="text-green-700 font-medium">
+                  💰 Adicionar recompensa monetária
+                </Label>
+              </div>
+              
+              {formData.hasMonetaryReward && (
+                <div className="space-y-4 mt-4 border-t pt-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="monetaryValue">Valor da Recompensa *</Label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-sm text-muted-foreground">
+                          R$
+                        </span>
+                        <Input
+                          id="monetaryValue"
+                          type="text"
+                          value={formData.monetaryValue}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            // Permitir apenas números, vírgula e ponto
+                            const cleanValue = value.replace(/[^0-9.,]/g, '');
+                            
+                            // Validar e formatar o valor
+                            if (cleanValue === '' || isValidCurrencyValue(cleanValue)) {
+                              handleInputChange('monetaryValue', cleanValue);
+                            }
+                          }}
+                          placeholder="0,00"
+                          className="pl-8"
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Exemplo: 500,00 ou 1.250,50
+                      </p>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="currency">Moeda</Label>
+                      <Select 
+                        value={formData.currency} 
+                        onValueChange={(value) => handleInputChange('currency', value)}
+                      >
+                        <SelectTrigger id="currency">
+                          <SelectValue placeholder="Selecione a moeda" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="BRL">BRL - Real Brasileiro</SelectItem>
+                          <SelectItem value="USD">USD - Dólar Americano</SelectItem>
+                          <SelectItem value="EUR">EUR - Euro</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  
+                  {formData.monetaryValue && (
+                    <div className="bg-green-100 border border-green-200 rounded-md p-3">
+                      <p className="text-sm text-green-700">
+                        <strong>Valor formatado:</strong> {formatCurrency(parseCurrencyInput(formData.monetaryValue))}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="flex items-center space-x-2">
             <Switch

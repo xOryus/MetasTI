@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { databases, DATABASE_ID, SECTOR_GOALS_COLLECTION, GoalScope } from '@/lib/appwrite';
 import { Query } from 'appwrite';
 import type { SectorGoal, Sector, GoalType, GoalPeriod } from '@/lib/appwrite';
@@ -14,9 +14,13 @@ export interface CreateSectorGoalData {
   checklistItems?: string[]; // Novo atributo
   period: GoalPeriod;
   category: string; // Novo atributo
-  isActive: boolean;
+  isActive?: boolean;
   scope?: GoalScope; // Novo atributo para identificar se é setorial ou individual
   assignedUserId?: string; // ID do usuário atribuído (para metas individuais)
+  // Campos monetários
+  hasMonetaryReward?: boolean; // Indica se possui recompensa monetária
+  monetaryValue?: number; // Valor em centavos
+  currency?: string; // Código da moeda
 }
 
 export interface UpdateSectorGoalData extends Partial<CreateSectorGoalData> {}
@@ -27,7 +31,7 @@ export function useSectorGoals() {
   const [error, setError] = useState<string | null>(null);
 
   // Buscar todos os goals
-  const fetchGoals = async (queries?: string[]) => {
+  const fetchGoals = useCallback(async (queries?: string[]) => {
     setLoading(true);
     setError(null);
     try {
@@ -51,15 +55,15 @@ export function useSectorGoals() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   // Buscar goals por setor
-  const fetchGoalsBySector = async (sectorId: string) => {
+  const fetchGoalsBySector = useCallback(async (sectorId: string) => {
     await fetchGoals([Query.equal('sectorId', sectorId)]);
-  };
+  }, [fetchGoals]);
 
   // Buscar goals ativos
-  const fetchActiveGoals = async () => {
+  const fetchActiveGoals = useCallback(async () => {
     try {
       const response = await databases.listDocuments(
         DATABASE_ID,
@@ -70,10 +74,10 @@ export function useSectorGoals() {
       logger.api.error('sector-goals', `Erro ao buscar goals ativos: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
       throw err;
     }
-  };
+  }, []);
 
   // Buscar goals por setor e ativas
-  const fetchActiveGoalsBySector = async (sectorId: string, userId?: string) => {
+  const fetchActiveGoalsBySector = useCallback(async (sectorId: string, userId?: string) => {
     try {
       // Construir queries baseadas nos parâmetros
       const queries = [
@@ -115,7 +119,7 @@ export function useSectorGoals() {
         throw err;
       }
     }
-  };
+  }, []);
 
   // Buscar metas individuais de um usuário específico
   const fetchUserIndividualGoals = async (userId: string) => {

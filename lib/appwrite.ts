@@ -98,6 +98,10 @@ export interface SectorGoal {
   isActive: boolean;
   scope?: GoalScope; // Novo atributo para identificar se é setorial ou individual
   assignedUserId?: string; // ID do usuário atribuído (para metas individuais)
+  // Novos campos monetários
+  monetaryValue?: number; // Valor em centavos para precisão
+  currency?: string; // Código da moeda (default: BRL)
+  hasMonetaryReward?: boolean; // Indica se possui recompensa monetária
 }
 
 export interface UserProfile {
@@ -120,6 +124,24 @@ export interface Submission {
   printFileId: string;
   $createdAt: string;
   $updatedAt: string;
+}
+
+export interface CreateSectorGoalData {
+  title: string;
+  description: string;
+  sectorId: string;
+  type: GoalType;
+  targetValue: number;
+  unit: string;
+  checklistItems?: string[];
+  period: GoalPeriod;
+  category: string;
+  scope?: GoalScope;
+  assignedUserId?: string;
+  // Campos monetários
+  monetaryValue?: number; // Valor em centavos
+  currency?: string; // Código da moeda
+  hasMonetaryReward?: boolean; // Possui recompensa monetária
 }
 
 // Função utilitária para gerar URL de visualização de arquivo
