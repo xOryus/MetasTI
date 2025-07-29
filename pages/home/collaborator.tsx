@@ -22,6 +22,12 @@ export default function CollaboratorHome() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitLoading, setSubmitLoading] = useState(false);
   
+  // Estados para coleta de dados das metas
+  const [individualGoalData, setIndividualGoalData] = useState<Record<string, any>>({});
+  const [checklistData, setChecklistData] = useState<Record<string, boolean>>({});
+  const [generalObservation, setGeneralObservation] = useState('');
+  const [goalFiles, setGoalFiles] = useState<Record<string, File>>({});
+  
   const {
     submissions,
     loading: submissionsLoading,
@@ -44,12 +50,12 @@ export default function CollaboratorHome() {
 
   // Buscar metas do setor quando o profile for carregado
   useEffect(() => {
-    if (profile?.sector) {
-      fetchActiveGoalsBySector(profile.sector).catch((error) => {
+    if (profile?.sector && profile?.userId) {
+      fetchActiveGoalsBySector(profile.sector, profile.userId).catch((error) => {
         logger.api.error('metas do setor', 'Falha na requisição');
       });
     }
-  }, [profile?.sector, fetchActiveGoalsBySector]);
+  }, [profile?.sector, profile?.userId, fetchActiveGoalsBySector]);
 
   // Separar metas por tipo para tratamento individual
   const goalsByType = useMemo(() => {
@@ -163,7 +169,85 @@ export default function CollaboratorHome() {
     return last7Days;
   }, [submissions, checklistItems, goalsByType.individualGoals]);
 
-  const handleSubmit = async (
+  // Funções para gerenciar dados das metas
+  const updateIndividualGoalData = (goalId: string, value: any) => {
+    setIndividualGoalData(prev => ({
+      ...prev,
+      [goalId]: value
+    }));
+  };
+
+  const updateChecklistData = (itemId: string, checked: boolean) => {
+    setChecklistData(prev => ({
+      ...prev,
+      [itemId]: checked
+    }));
+  };
+
+  const updateGoalFile = (goalId: string, file: File) => {
+    setGoalFiles(prev => ({
+      ...prev,
+      [goalId]: file
+    }));
+  };
+
+  const handleSubmit = async () => {
+    if (!profile) return;
+
+    try {
+      setSubmitLoading(true);
+      setSubmitError(null);
+      logger.form.submit('all-goals');
+      
+      // Combinar todos os dados em um formato compatível com o sistema existente
+      const combinedAnswers: Record<string, boolean> = { ...checklistData };
+      
+      // Para metas individuais, converter os valores para booleanos baseado no tipo
+      Object.entries(individualGoalData).forEach(([goalId, value]) => {
+        const goal = goalsByType.individualGoals.find(g => g.$id === goalId);
+        if (goal) {
+          switch (goal.type) {
+            case 'numeric':
+            case 'percentage':
+              // Considera atingido se o valor é >= meta
+              combinedAnswers[goalId] = value >= goal.targetValue;
+              break;
+            case 'task_completion':
+              combinedAnswers[goalId] = Boolean(value);
+              break;
+            default:
+              combinedAnswers[goalId] = Boolean(value);
+          }
+        }
+      });
+      
+      // Usar o primeiro arquivo encontrado (podemos melhorar isso depois para múltiplos arquivos)
+      const firstFile = Object.values(goalFiles)[0];
+      if (!firstFile) {
+        setSubmitError('Por favor, anexe pelo menos um arquivo de comprovação.');
+        return;
+      }
+      
+      await createSubmission(profile.$id, combinedAnswers, generalObservation, firstFile);
+      
+      logger.form.success('all-goals');
+      alert('Todas as metas foram enviadas com sucesso!');
+      
+      // Limpar dados após envio
+      setIndividualGoalData({});
+      setChecklistData({});
+      setGeneralObservation('');
+      setGoalFiles({});
+      
+    } catch (error: any) {
+      logger.form.error('all-goals', error.message);
+      setSubmitError(error.message);
+    } finally {
+      setSubmitLoading(false);
+    }
+  };
+
+  const handleSubmitOld = async (
     answers: Record<string, boolean>,
     observation: string,
     printFile: File
@@ -319,6 +403,8 @@ export default function CollaboratorHome() {
                                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                   placeholder={`Meta: ${goal.targetValue}`}
                                   min="0"
+                                  value={individualGoalData[goal.$id!] || ''}
+                                  onChange={(e) => updateIndividualGoalData(goal.$id!, parseFloat(e.target.value) || 0)}
                                 />
                               </div>
                             )}
@@ -333,6 +419,8 @@ export default function CollaboratorHome() {
                                   placeholder={`Meta: ${goal.targetValue}%`}
                                   min="0"
                                   max="100"
+                                  value={individualGoalData[goal.$id!] || ''}
+                                  onChange={(e) => updateIndividualGoalData(goal.$id!, parseFloat(e.target.value) || 0)}
                                 />
                               </div>
                             )}
@@ -342,6 +430,8 @@ export default function CollaboratorHome() {
                                   <input
                                     type="checkbox"
                                     className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                    checked={individualGoalData[goal.$id!] || false}
+                                    onChange={(e) => updateIndividualGoalData(goal.$id!, e.target.checked)}
                                   />
                                   <span className="text-sm text-gray-700">Tarefa concluída</span>
                                 </label>
@@ -357,6 +447,10 @@ export default function CollaboratorHome() {
                                 type="file"
                                 accept="image/*,.pdf,.doc,.docx"
                                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 file:mr-4 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-sm file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) updateGoalFile(goal.$id!, file);
+                                }}
                               />
                               <p className="text-xs text-gray-500 mt-1">
                                 Formatos aceitos: Imagens, PDF, DOC, DOCX
@@ -383,13 +477,15 @@ export default function CollaboratorHome() {
                           </div>
                         </CardHeader>
                         <CardContent>
-                          <div className="space-y-4">
+                            <div className="space-y-4">
                             <div className="space-y-2">
                               {goal.items.map((item: any) => (
                                 <label key={item.id} className="flex items-center space-x-2">
                                   <input
                                     type="checkbox"
                                     className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                    checked={checklistData[item.id] || false}
+                                    onChange={(e) => updateChecklistData(item.id, e.target.checked)}
                                   />
                                   <span className="text-sm text-gray-700">{item.label}</span>
                                 </label>
@@ -405,6 +501,10 @@ export default function CollaboratorHome() {
                                 type="file"
                                 accept="image/*,.pdf,.doc,.docx"
                                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 file:mr-4 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-sm file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) updateGoalFile(goal.$id!, file);
+                                }}
                               />
                               <p className="text-xs text-gray-500 mt-1">
                                 Formatos aceitos: Imagens, PDF, DOC, DOCX
@@ -431,6 +531,8 @@ export default function CollaboratorHome() {
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             rows={3}
                             placeholder="Adicione observações gerais sobre todas as metas do dia..."
+                            value={generalObservation}
+                            onChange={(e) => setGeneralObservation(e.target.value)}
                           />
                           <p className="text-xs text-gray-500 mt-1">
                             Use este campo para comentários que se aplicam a todas as metas
@@ -440,6 +542,7 @@ export default function CollaboratorHome() {
                         <Button 
                           className="w-full" 
                           disabled={submitLoading}
+                          onClick={handleSubmit}
                         >
                           {submitLoading ? 'Enviando...' : 'Enviar Todas as Metas'}
                         </Button>

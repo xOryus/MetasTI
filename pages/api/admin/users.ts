@@ -74,6 +74,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
       const { email, password, sector, role, name } = req.body;
       
+      // Validar se o email foi fornecido
+      if (!email) {
+        return res.status(400).json({ 
+          error: 'Email é um campo obrigatório.' 
+        });
+      }
+      
       // Verificar se já existe usuário com este email
       try {
         const existingUsers = await adminUsers.list([
@@ -106,6 +113,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         {
           userId: user.$id,
           name: displayName, // Salvar o nome no perfil
+          email, // Adicionando email obrigatório
           sector,
           role
         }
@@ -125,9 +133,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           error: 'Usuário com este email já existe no sistema.' 
         });
       } else if (error.type === 'document_invalid_structure') {
-        return res.status(400).json({ 
-          error: 'Erro na estrutura dos dados. Verifique se todos os campos obrigatórios foram preenchidos.' 
-        });
+        // Verificar se o erro é especificamente sobre o campo de email
+        if (error.message?.includes('email')) {
+          return res.status(400).json({ 
+            error: 'Erro na estrutura dos dados: o campo email é obrigatório.' 
+          });
+        } else {
+          return res.status(400).json({ 
+            error: 'Erro na estrutura dos dados. Verifique se todos os campos obrigatórios foram preenchidos.' 
+          });
+        }
       } else if (error.code === 400) {
         return res.status(400).json({ 
           error: 'Dados inválidos. Verifique as informações fornecidas.' 

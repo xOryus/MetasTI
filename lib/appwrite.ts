@@ -75,6 +75,12 @@ export enum GoalPeriod {
 // }
 
 // Tipos
+// Enum para o escopo da meta (setorial ou individual)
+export enum GoalScope {
+  SECTOR = 'sector',
+  INDIVIDUAL = 'individual'
+}
+
 export interface SectorGoal {
   $id?: string;
   $createdAt?: string;
@@ -90,12 +96,15 @@ export interface SectorGoal {
   period: GoalPeriod;
   category: string; // Novo atributo
   isActive: boolean;
+  scope?: GoalScope; // Novo atributo para identificar se é setorial ou individual
+  assignedUserId?: string; // ID do usuário atribuído (para metas individuais)
 }
 
 export interface UserProfile {
   $id: string;
   userId: string;
   name: string; // Campo para nome do usuário
+  email: string; // Campo obrigatório para o Appwrite
   sector: Sector;
   role: Role;
   $createdAt: string;

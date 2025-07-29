@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { databases, DATABASE_ID, SECTOR_GOALS_COLLECTION } from '@/lib/appwrite';
+import { databases, DATABASE_ID, SECTOR_GOALS_COLLECTION, GoalScope } from '@/lib/appwrite';
 import { Query } from 'appwrite';
 import type { SectorGoal, Sector, GoalType, GoalPeriod } from '@/lib/appwrite';
 import { logger } from '@/lib/logger';
@@ -15,6 +15,8 @@ export interface CreateSectorGoalData {
   period: GoalPeriod;
   category: string; // Novo atributo
   isActive: boolean;
+  scope?: GoalScope; // Novo atributo para identificar se é setorial ou individual
+  assignedUserId?: string; // ID do usuário atribuído (para metas individuais)
 }
 
 export interface UpdateSectorGoalData extends Partial<CreateSectorGoalData> {}
@@ -71,15 +73,31 @@ export function useSectorGoals() {
   };
 
   // Buscar goals por setor e ativas
-  const fetchActiveGoalsBySector = async (sectorId: string) => {
+  const fetchActiveGoalsBySector = async (sectorId: string, userId?: string) => {
     try {
+      // Construir queries baseadas nos parâmetros
+      const queries = [
+        Query.equal('sectorId', sectorId),
+        Query.equal('isActive', true),
+      ];
+      
+      // Se o userId for fornecido, busca metas setoriais OU metas individuais desse usuário específico
+      if (userId) {
+        queries.push(
+          Query.or([
+            Query.equal('scope', GoalScope.SECTOR),
+            Query.and([
+              Query.equal('scope', GoalScope.INDIVIDUAL),
+              Query.equal('assignedUserId', userId)
+            ])
+          ])
+        );
+      }
+      
       const response = await databases.listDocuments(
         DATABASE_ID,
         SECTOR_GOALS_COLLECTION,
-        [
-          Query.equal('sectorId', sectorId),
-          Query.equal('isActive', true)
-        ]
+        queries
       );
       
       setGoals(response.documents as unknown as SectorGoal[]);
@@ -99,11 +117,37 @@ export function useSectorGoals() {
     }
   };
 
+  // Buscar metas individuais de um usuário específico
+  const fetchUserIndividualGoals = async (userId: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      // Agora podemos usar os campos scope e assignedUserId na query
+      const response = await databases.listDocuments(
+        DATABASE_ID,
+        SECTOR_GOALS_COLLECTION,
+        [
+          Query.equal('scope', GoalScope.INDIVIDUAL),
+          Query.equal('assignedUserId', userId)
+        ]
+      );
+      
+      setGoals(response.documents as unknown as SectorGoal[]);
+    } catch (err) {
+      logger.api.error('sector-goals', `Erro ao buscar metas individuais: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
+      setError('Erro ao buscar metas individuais');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Criar novo goal
   const createGoal = async (data: CreateSectorGoalData): Promise<SectorGoal> => {
     setLoading(true);
     setError(null);
     try {
+      // Agora podemos enviar todos os campos diretamente
       const response = await databases.createDocument(
         DATABASE_ID,
         SECTOR_GOALS_COLLECTION,
@@ -127,6 +171,7 @@ export function useSectorGoals() {
     setLoading(true);
     setError(null);
     try {
+      // Agora podemos enviar todos os campos diretamente
       const response = await databases.updateDocument(
         DATABASE_ID,
         SECTOR_GOALS_COLLECTION,
@@ -172,11 +217,9 @@ export function useSectorGoals() {
     return await updateGoal(goalId, { isActive });
   };
 
-  // Buscar goals no mount
-  useEffect(() => {
-    fetchGoals();
-  }, []);
-
+  // Não carregamos automaticamente todas as metas para evitar vazamento de dados
+  // O componente deve chamar o método apropriado para buscar as metas relevantes
+  
   return {
     goals,
     loading,
@@ -185,6 +228,7 @@ export function useSectorGoals() {
     fetchGoalsBySector,
     fetchActiveGoals,
     fetchActiveGoalsBySector,
+    fetchUserIndividualGoals,
     createGoal,
     updateGoal,
     deleteGoal,

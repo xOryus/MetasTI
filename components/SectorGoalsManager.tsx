@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,9 +10,11 @@ import { toast } from 'sonner';
 import { Plus, Edit, Trash2, Users, Target, Clock, TrendingUp } from 'lucide-react';
 import { useSectorGoals, type CreateSectorGoalData, type UpdateSectorGoalData } from '@/hooks/useSectorGoals';
 import { useAllProfiles } from '@/hooks/useAllProfiles';
-import { Sector, GoalType, GoalPeriod, type SectorGoal } from '@/lib/appwrite';
+import { Sector, GoalType, GoalPeriod, GoalScope, type SectorGoal } from '@/lib/appwrite';
 import { useAuth } from '@/hooks/useAuth';
-import { GoalForm, GoalFormData, goalPeriodDisplayNames, sectorDisplayNames } from './GoalForm';
+import { Role } from '@/lib/roles';
+import { Query } from 'appwrite';
+import { GoalForm, GoalFormData, goalPeriodDisplayNames, sectorDisplayNames, goalScopeDisplayNames } from './GoalForm';
 
 const initialFormData: GoalFormData = {
   title: '',
@@ -24,12 +26,14 @@ const initialFormData: GoalFormData = {
   category: '',
   period: '',
   isActive: true,
-  checklistItems: []
+  checklistItems: [],
+  scope: GoalScope.SECTOR, // Por padrão, é uma meta setorial
+  assignedUserId: ''
 };
 
 export function SectorGoalsManager() {
-  const { user } = useAuth();
-  const { goals, loading, error, createGoal, updateGoal, deleteGoal, toggleGoalStatus, refetch } = useSectorGoals();
+  const { user, profile } = useAuth();
+  const { goals, loading, error, createGoal, updateGoal, deleteGoal, toggleGoalStatus, refetch, fetchGoals } = useSectorGoals();
   const { profiles } = useAllProfiles();
   
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -37,11 +41,46 @@ export function SectorGoalsManager() {
   const [editingGoal, setEditingGoal] = useState<SectorGoal | null>(null);
   const [formData, setFormData] = useState<GoalFormData>(initialFormData);
   const [selectedSectorFilter, setSelectedSectorFilter] = useState<Sector | 'all'>('all');
+  const [selectedScopeFilter, setSelectedScopeFilter] = useState<GoalScope | 'all'>('all');
   const [currentStep, setCurrentStep] = useState<"type" | "details">("type");
+  
+  // Função para obter o nome do usuário pelo ID
+  const getUserNameById = (userId: string): string => {
+    const profile = profiles.find(p => p.userId === userId);
+    return profile ? profile.name : 'Usuário não encontrado';
+  };
+  
+  // Carregar metas relevantes com base no perfil do usuário
+  useEffect(() => {
+    if (profile) {
+      // Se for administrador ou gerente, carrega todas as metas
+      if (profile.role === Role.ADMIN || profile.role === Role.MANAGER) {
+        fetchGoals();
+      } else {
+        // Se for colaborador, carrega apenas metas do seu setor e suas metas individuais
+        const queries = [
+          Query.or([
+            Query.equal('scope', GoalScope.SECTOR),
+            Query.and([
+              Query.equal('scope', GoalScope.INDIVIDUAL),
+              Query.equal('assignedUserId', profile.userId)
+            ])
+          ])
+        ];
+        
+        if (profile.sector) {
+          queries.push(Query.equal('sectorId', profile.sector));
+        }
+        
+        fetchGoals(queries);
+      }
+    }
+  }, [profile, fetchGoals]);
 
-  const filteredGoals = selectedSectorFilter === 'all' 
-    ? goals 
-    : goals.filter(goal => goal.sectorId === selectedSectorFilter);
+  // Aplicar filtros por setor e escopo
+  const filteredGoals = goals
+    .filter(goal => selectedSectorFilter === 'all' ? true : goal.sectorId === selectedSectorFilter)
+    .filter(goal => selectedScopeFilter === 'all' ? true : goal.scope === selectedScopeFilter);
 
   const handleInputChange = (field: keyof GoalFormData, value: any) => {
     setFormData(prev => {
@@ -62,10 +101,13 @@ export function SectorGoalsManager() {
       return;
     }
 
-    if (!formData.title || !formData.sectorId || !formData.type || !formData.period) {
+    if (!formData.title || !formData.sectorId || !formData.type || !formData.period || !formData.scope) {
       toast.error('Preencha todos os campos obrigatórios');
       return;
     }
+
+    // Validação para metas individuais (precisamos de um usuário atribuído)
+    // Não validamos mais o campo assignedUserId pois não podemos salvar esse dado no Appwrite
 
     // Validações específicas por tipo
     if ((formData.type === GoalType.NUMERIC || formData.type === GoalType.PERCENTAGE) && !formData.targetValue) {
@@ -101,7 +143,10 @@ export function SectorGoalsManager() {
         category: formData.sectorId, // Usar o sectorId como category
         period: formData.period as GoalPeriod,
         isActive: formData.isActive,
-        checklistItems: formData.checklistItems || []
+        checklistItems: formData.checklistItems || [],
+        // Enviar scope e assignedUserId corretamente
+        scope: formData.scope as GoalScope,
+        assignedUserId: formData.scope === GoalScope.INDIVIDUAL ? formData.assignedUserId : undefined
       };
 
       await createGoal(goalData);
@@ -129,7 +174,10 @@ export function SectorGoalsManager() {
         category: formData.sectorId,
         period: formData.period as GoalPeriod,
         isActive: formData.isActive,
-        checklistItems: formData.checklistItems || []
+        checklistItems: formData.checklistItems || [],
+        // Enviar scope e assignedUserId corretamente
+        scope: formData.scope as GoalScope,
+        assignedUserId: formData.scope === GoalScope.INDIVIDUAL ? formData.assignedUserId : undefined
       };
 
       await updateGoal(editingGoal.$id, updateData);
@@ -171,7 +219,11 @@ export function SectorGoalsManager() {
       category: goal.category || '',
       period: goal.period,
       isActive: goal.isActive,
-      checklistItems: goal.checklistItems || []
+      checklistItems: goal.checklistItems || [],
+      // Como não temos como persistir scope e assignedUserId no backend,
+      // vamos sempre definir como setorial
+      scope: GoalScope.SECTOR,
+      assignedUserId: ''
     });
     setIsEditDialogOpen(true);
   };
@@ -223,7 +275,7 @@ export function SectorGoalsManager() {
 
       <div className="flex items-center space-x-4">
         <Select value={selectedSectorFilter} onValueChange={(value) => setSelectedSectorFilter(value as Sector | 'all')}>
-          <SelectTrigger className="w-64">
+          <SelectTrigger className="w-40">
             <SelectValue placeholder="Filtrar por setor" />
           </SelectTrigger>
           <SelectContent>
@@ -233,6 +285,18 @@ export function SectorGoalsManager() {
             ))}
           </SelectContent>
         </Select>
+        
+        <Select value={selectedScopeFilter} onValueChange={(value) => setSelectedScopeFilter(value as GoalScope | 'all')}>
+          <SelectTrigger className="w-40">
+            <SelectValue placeholder="Tipo de meta" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas as metas</SelectItem>
+            <SelectItem value={GoalScope.SECTOR}>Metas Setoriais</SelectItem>
+            <SelectItem value={GoalScope.INDIVIDUAL}>Metas Individuais</SelectItem>
+          </SelectContent>
+        </Select>
+        
         <div className="text-sm text-muted-foreground">
           {filteredGoals.length} meta(s) encontrada(s)
         </div>
@@ -267,11 +331,20 @@ export function SectorGoalsManager() {
                   <div>
                     <CardTitle className="flex items-center gap-2">
                       {goal.title}
+                      {goal.scope === GoalScope.INDIVIDUAL && (
+                        <Badge className="bg-blue-500 hover:bg-blue-600 text-white">Individual</Badge>
+                      )}
                       {!goal.isActive && (
                         <Badge variant="outline" className="text-muted-foreground">Inativa</Badge>
                       )}
                     </CardTitle>
                     <p className="text-sm text-muted-foreground mt-1">{goal.description}</p>
+                    {goal.scope === GoalScope.INDIVIDUAL && goal.assignedUserId && (
+                      <p className="text-sm text-muted-foreground flex items-center mt-1">
+                        <Users className="h-3 w-3 mr-1" />
+                        {profiles.find(p => p.$id === goal.assignedUserId)?.name || "Usuário Atribuído"}
+                      </p>
+                    )}
                   </div>
                   <div className="flex space-x-1">
                     <Button
@@ -321,6 +394,8 @@ export function SectorGoalsManager() {
                       <div className="text-xs text-muted-foreground">Setor</div>
                     </div>
                   </div>
+                  
+                  {/* Informação de usuário não será mostrada já que não temos como salvar esse dado no backend */}
                   <div className="flex items-center space-x-2">
                     <TrendingUp className="h-4 w-4 text-muted-foreground" />
                     <div>

@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { GoalType, GoalPeriod, Sector } from '@/lib/appwrite';
+import { GoalType, GoalPeriod, Sector, GoalScope } from '@/lib/appwrite';
+import { useAllProfiles } from '@/hooks/useAllProfiles';
 import ChecklistManager from "./ChecklistManager";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
@@ -46,6 +47,11 @@ export const goalPeriodDisplayNames: Record<GoalPeriod, string> = {
   [GoalPeriod.YEARLY]: 'Anual'
 };
 
+export const goalScopeDisplayNames: Record<GoalScope, string> = {
+  [GoalScope.SECTOR]: 'Setorial',
+  [GoalScope.INDIVIDUAL]: 'Individual'
+};
+
 export interface GoalFormData {
   title: string;
   description: string;
@@ -57,6 +63,8 @@ export interface GoalFormData {
   period: GoalPeriod | '';
   isActive: boolean;
   checklistItems: string[];
+  scope: GoalScope | '';
+  assignedUserId?: string; // ID do usuário atribuído (para metas individuais)
 }
 
 interface GoalFormProps {
@@ -70,6 +78,42 @@ interface GoalFormProps {
  * Componente de formulário para criação e edição de metas
  * Implementa um fluxo em etapas para melhorar a experiência do usuário
  */
+// Componente de seleção de usuários baseado no setor
+interface UserSelectProps {
+  sectorId: string;
+  value: string;
+  onValueChange: (value: string) => void;
+}
+
+function UserSelect({ sectorId, value, onValueChange }: UserSelectProps) {
+  const { profiles, loading } = useAllProfiles(sectorId);
+
+  if (loading) {
+    return (
+      <Select disabled>
+        <SelectTrigger>
+          <SelectValue placeholder="Carregando usuários..." />
+        </SelectTrigger>
+      </Select>
+    );
+  }
+
+  return (
+    <Select value={value} onValueChange={onValueChange}>
+      <SelectTrigger>
+        <SelectValue placeholder="Selecione o usuário" />
+      </SelectTrigger>
+      <SelectContent>
+        {profiles.map((profile) => (
+          <SelectItem key={profile.$id} value={profile.userId}>
+            {profile.name} ({sectorDisplayNames[profile.sector as Sector]})
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
 export function GoalForm({ formData, handleInputChange, isEdit = false, onStepChange }: GoalFormProps) {
   // Estado para controlar a etapa atual do formulário (tipo ou detalhes)
   const [step, setStep] = useState<"type" | "details">(
@@ -232,6 +276,23 @@ export function GoalForm({ formData, handleInputChange, isEdit = false, onStepCh
             </div>
             
             <div className="space-y-2">
+              <Label htmlFor="scope">Escopo da Meta *</Label>
+              <Select 
+                value={formData.scope || ''} 
+                onValueChange={(value) => handleInputChange('scope', value)}
+              >
+                <SelectTrigger id="scope">
+                  <SelectValue placeholder="Selecione o escopo" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(goalScopeDisplayNames).map(([key, name]) => (
+                    <SelectItem key={key} value={key}>{name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="sectorId">Setor *</Label>
               <Select value={formData.sectorId} onValueChange={(value) => handleInputChange('sectorId', value)}>
                 <SelectTrigger id="sectorId">
@@ -369,6 +430,17 @@ export function GoalForm({ formData, handleInputChange, isEdit = false, onStepCh
                 </SelectContent>
               </Select>
             </div>
+
+            {formData.scope === GoalScope.INDIVIDUAL && (
+              <div className="space-y-2">
+                <Label htmlFor="assignedUserId">Usuário Atribuído *</Label>
+                <UserSelect 
+                  sectorId={formData.sectorId} 
+                  value={formData.assignedUserId || ''}
+                  onValueChange={(value) => handleInputChange('assignedUserId', value)} 
+                />
+              </div>
+            )}
           </div>
 
           <div className="flex items-center space-x-2">
