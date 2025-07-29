@@ -496,9 +496,32 @@ export default function ManagerDashboard() {
       return entries.map(([key, value]) => {
         const isCompleted = value === true || value === 'true';
         const status = isCompleted ? '✅' : '❌';
-        const goalName = key.replace(/^.*-/, '').replace(/_/g, ' '); // Simplificar nome da meta
-        return `${status} ${goalName}`;
-      }).join('\n');
+        
+        // Melhor formatação do nome da meta
+        let goalName = key;
+        
+        // Se for um ID de meta (formato UUID), usar nome genérico
+        if (key.length > 20 && key.includes('-')) {
+          goalName = 'Meta Individual';
+        } else {
+          // Limpar e formatar nomes de checklist
+          goalName = key
+            .replace(/^.*-/, '') // Remove prefixos com hífen
+            .replace(/_/g, ' ') // Substitui underscores por espaços
+            .replace(/([A-Z])/g, ' $1') // Adiciona espaço antes de maiúsculas
+            .trim()
+            .toLowerCase()
+            .replace(/\b\w/g, l => l.toUpperCase()); // Capitaliza primeira letra de cada palavra
+        }
+        
+        return { status, goalName, isCompleted };
+      }).sort((a, b) => {
+        // Ordena: concluídas primeiro, depois por nome
+        if (a.isCompleted !== b.isCompleted) {
+          return b.isCompleted ? 1 : -1;
+        }
+        return a.goalName.localeCompare(b.goalName);
+      });
     } catch (error) {
       return 'Formato de resposta inválido';
     }
@@ -1197,13 +1220,79 @@ export default function ManagerDashboard() {
                             </div>
                             
                             <div className="space-y-4">
+                              {/* Resumo das Metas */}
+                              {(() => {
+                                const responses = formatChecklistResponses(submission.checklist);
+                                if (typeof responses === 'object' && responses.length > 0) {
+                                  const completed = responses.filter(r => r.isCompleted).length;
+                                  const total = responses.length;
+                                  const completionRate = Math.round((completed / total) * 100);
+                                  
+                                  return (
+                                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-100">
+                                      <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                          <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold">
+                                            {completionRate}%
+                                          </div>
+                                          <div>
+                                            <p className="font-semibold text-gray-800">Taxa de Conclusão</p>
+                                            <p className="text-sm text-gray-600">{completed} de {total} metas concluídas</p>
+                                          </div>
+                                        </div>
+                                        <div className="text-right">
+                                          <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                            <div 
+                                              className="h-full bg-gradient-to-r from-blue-500 to-green-500 transition-all duration-300"
+                                              style={{ width: `${completionRate}%` }}
+                                            ></div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              })()}
+                              
                               <div className="bg-gradient-to-r from-gray-50 to-blue-50/50 p-4 rounded-xl">
                                 <div className="flex items-center gap-2 mb-3">
                                   <CheckCircle className="w-5 h-5 text-green-600" />
-                                  <p className="font-semibold text-gray-800">Respostas do Checklist</p>
+                                  <p className="font-semibold text-gray-800">Respostas das Metas</p>
                                 </div>
-                                <div className="text-sm text-gray-700 bg-white p-4 rounded-lg whitespace-pre-line shadow-sm">
-                                  {formatChecklistResponses(submission.checklist)}
+                                <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+                                  {(() => {
+                                    const responses = formatChecklistResponses(submission.checklist);
+                                    if (typeof responses === 'string') {
+                                      return (
+                                        <div className="p-4 text-sm text-gray-700">
+                                          {responses}
+                                        </div>
+                                      );
+                                    }
+                                    
+                                    return (
+                                      <div className="divide-y divide-gray-100">
+                                        {responses.map((response, idx) => (
+                                          <div key={idx} className="flex items-center justify-between p-3 hover:bg-gray-50 transition-colors">
+                                            <div className="flex items-center gap-3">
+                                              <span className="text-lg">{response.status}</span>
+                                              <span className="text-sm font-medium text-gray-700">
+                                                {response.goalName}
+                                              </span>
+                                            </div>
+                                            <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                                              response.isCompleted 
+                                                ? 'bg-green-100 text-green-700' 
+                                                : 'bg-red-100 text-red-700'
+                                            }`}>
+                                              {response.isCompleted ? 'Concluída' : 'Pendente'}
+                                            </span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    );
+                                  })()}
                                 </div>
                               </div>
                               
@@ -1225,28 +1314,54 @@ export default function ManagerDashboard() {
                                     <FileImage className="w-5 h-5 text-blue-600" />
                                     <span className="font-semibold text-gray-800">Arquivo Comprobatório</span>
                                   </div>
-                                  <div className="flex gap-3">
-                                    <Suspense fallback={
-                                      <div className="animate-pulse bg-gray-200 h-10 w-24 rounded"></div>
-                                    }>
-                                      <ProofImageViewer 
-                                        fileId={submission.printFileId}
-                                        submissionDate={format(new Date(submission.date), 'dd/MM/yyyy')}
-                                        userName={selectedCollaborator.name}
-                                      />
-                                    </Suspense>
-                                    <Button 
-                                      variant="outline" 
-                                      size="sm"
-                                      className="bg-white hover:bg-blue-50 border-blue-200 text-blue-700 hover:text-blue-800 shadow-sm"
-                                      onClick={() => {
-                                        const downloadUrl = `${process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT}/storage/buckets/${process.env.NEXT_PUBLIC_APPWRITE_PRINTS_BUCKET_ID}/files/${submission.printFileId}/download?project=${process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID}`;
-                                        window.open(downloadUrl, '_blank');
-                                      }}
-                                    >
-                                      <Download className="w-4 h-4 mr-2" />
-                                      Baixar Arquivo
-                                    </Button>
+                                  <div className="bg-white rounded-lg p-4 shadow-sm">
+                                    <div className="flex items-center justify-between mb-3">
+                                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                                        <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                                          <FileImage className="w-4 h-4 text-blue-600" />
+                                        </div>
+                                        <span>Arquivo de comprovação</span>
+                                      </div>
+                                      <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">
+                                        Anexado
+                                      </span>
+                                    </div>
+                                    
+                                    <div className="flex gap-2">
+                                      <Button 
+                                        variant="outline" 
+                                        size="sm"
+                                        className="flex-1 bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700 hover:text-blue-800"
+                                        onClick={() => {
+                                          const viewUrl = `${process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT}/storage/buckets/${process.env.NEXT_PUBLIC_APPWRITE_PRINTS_BUCKET_ID}/files/${submission.printFileId}/view?project=${process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID}`;
+                                          window.open(viewUrl, '_blank');
+                                        }}
+                                      >
+                                        <Eye className="w-4 h-4 mr-2" />
+                                        Visualizar
+                                      </Button>
+                                      
+                                      <Button 
+                                        variant="outline" 
+                                        size="sm"
+                                        className="flex-1 bg-green-50 hover:bg-green-100 border-green-200 text-green-700 hover:text-green-800"
+                                        onClick={() => {
+                                          const downloadUrl = `${process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT}/storage/buckets/${process.env.NEXT_PUBLIC_APPWRITE_PRINTS_BUCKET_ID}/files/${submission.printFileId}/download?project=${process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID}`;
+                                          window.open(downloadUrl, '_blank');
+                                        }}
+                                      >
+                                        <Download className="w-4 h-4 mr-2" />
+                                        Baixar
+                                      </Button>
+                                    </div>
+                                    
+                                    {/* Informações adicionais do arquivo */}
+                                    <div className="mt-3 pt-3 border-t border-gray-100">
+                                      <div className="flex items-center justify-between text-xs text-gray-500">
+                                        <span>ID: {submission.printFileId.slice(0, 12)}...</span>
+                                        <span>Enviado em {format(new Date(submission.date), 'dd/MM/yyyy HH:mm')}</span>
+                                      </div>
+                                    </div>
                                   </div>
                                 </div>
                               )}
