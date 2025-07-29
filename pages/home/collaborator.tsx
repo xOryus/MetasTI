@@ -204,17 +204,17 @@ export default function CollaboratorHome() {
       logger.form.submit('all-goals');
       
       // Combinar todos os dados em um formato compatível com o sistema existente
-      const combinedAnswers: Record<string, boolean> = { ...checklistData };
+      const combinedAnswers: Record<string, any> = { ...checklistData };
       
-      // Para metas individuais, converter os valores para booleanos baseado no tipo
+      // Para metas individuais, preservar os valores originais para cálculo correto
       Object.entries(individualGoalData).forEach(([goalId, value]) => {
         const goal = goalsByType.individualGoals.find(g => g.$id === goalId);
         if (goal) {
           switch (goal.type) {
             case 'numeric':
             case 'percentage':
-              // Considera atingido se o valor é >= meta
-              combinedAnswers[goalId] = value >= goal.targetValue;
+              // Para metas numéricas, preservar o valor original para cálculo proporcional
+              combinedAnswers[goalId] = value;
               break;
             case 'task_completion':
               combinedAnswers[goalId] = Boolean(value);
@@ -363,12 +363,14 @@ export default function CollaboratorHome() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
-          {/* Checklist Principal */}
-          <div className="lg:col-span-2">
-            <Card className="shadow-lg border-0 bg-white">
+             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+         <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+           
+                      {/* Checklist Principal */}
+           <div className="lg:col-span-2 xl:col-span-3 space-y-6">
+             
+             {/* Seção Principal - Checklist */}
+             <Card className="shadow-lg border-0 bg-white">
               <CardHeader className="pb-4">
                 <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-3">
                   <div className="w-1 h-8 bg-gradient-to-b from-blue-500 to-blue-600 rounded-full"></div>
@@ -606,35 +608,70 @@ export default function CollaboratorHome() {
                 )}
               </CardContent>
             </Card>
+            
+            {/* Seção de Resumo Rápido - Apenas quando já enviou */}
+            {hasSubmittedToday && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Card className="shadow-md border-0 bg-gradient-to-br from-green-50 to-green-100">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                        <Target className="w-5 h-5 text-green-600" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-green-800">Metas Concluídas</div>
+                        <div className="text-lg font-bold text-green-700">
+                          {sectorGoals.filter(g => g.isActive).length} metas ativas
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card className="shadow-md border-0 bg-gradient-to-br from-blue-50 to-blue-100">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                        <TrendingUp className="w-5 h-5 text-blue-600" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-blue-800">Próximo Envio</div>
+                        <div className="text-lg font-bold text-blue-700">Amanhã</div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
           </div>
 
-          {/* Sidebar - Estatísticas Pessoais */}
-          <div className="space-y-6">
-            
-            {/* Stats Cards */}
-            <div className="grid grid-cols-2 gap-4">
+                     {/* Sidebar - Estatísticas Pessoais */}
+           <div className="space-y-4">
+             
+             {/* Stats Cards */}
+             <div className="grid grid-cols-2 gap-3">
               <Card className="shadow-md border-0 bg-gradient-to-br from-blue-50 to-blue-100">
-                <CardContent className="p-4 text-center">
-                  <Calendar className="w-8 h-8 mx-auto mb-2 text-blue-600" />
-                  <div className="text-2xl font-bold text-blue-700">{personalStats.thisWeek}%</div>
+                <CardContent className="p-3 text-center">
+                  <Calendar className="w-6 h-6 mx-auto mb-1 text-blue-600" />
+                  <div className="text-lg font-bold text-blue-700">{personalStats.thisWeek}%</div>
                   <div className="text-xs text-blue-600">Esta Semana</div>
                 </CardContent>
               </Card>
 
               <Card className="shadow-md border-0 bg-gradient-to-br from-emerald-50 to-emerald-100">
-                <CardContent className="p-4 text-center">
-                  <TrendingUp className="w-8 h-8 mx-auto mb-2 text-emerald-600" />
-                  <div className="text-2xl font-bold text-emerald-700">{personalStats.streak}</div>
+                <CardContent className="p-3 text-center">
+                  <TrendingUp className="w-6 h-6 mx-auto mb-1 text-emerald-600" />
+                  <div className="text-lg font-bold text-emerald-700">{personalStats.streak}</div>
                   <div className="text-xs text-emerald-600">Dias Seguidos</div>
                 </CardContent>
               </Card>
 
               <Card className="shadow-md border-0 bg-gradient-to-br from-green-50 to-green-100">
-                <CardContent className="p-4 text-center">
-                  <div className="w-8 h-8 mx-auto mb-2 text-green-600 flex items-center justify-center">
+                <CardContent className="p-3 text-center">
+                  <div className="w-6 h-6 mx-auto mb-1 text-green-600 flex items-center justify-center text-sm">
                     💰
                   </div>
-                  <div className="text-2xl font-bold text-green-700">
+                  <div className="text-lg font-bold text-green-700">
                     {formatCurrency(centavosToReais(rewardStats?.totalEarnedThisMonth || 0))}
                   </div>
                   <div className="text-xs text-green-600">Ganho no Mês</div>
@@ -642,24 +679,31 @@ export default function CollaboratorHome() {
               </Card>
 
               <Card className="shadow-md border-0 bg-gradient-to-br from-orange-50 to-orange-100">
-                <CardContent className="p-4 text-center">
-                  <Target className="w-8 h-8 mx-auto mb-2 text-orange-600" />
-                  <div className="text-2xl font-bold text-orange-700">{personalStats.lastWeek}%</div>
+                <CardContent className="p-3 text-center">
+                  <Target className="w-6 h-6 mx-auto mb-1 text-orange-600" />
+                  <div className="text-lg font-bold text-orange-700">{personalStats.lastWeek}%</div>
                   <div className="text-xs text-orange-600">Semana Passada</div>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Gráfico Pessoal Simples */}
-            <Chart
-              data={chartData}
-              title="Minha Performance - 7 Dias"
-              type="line"
-              height={200}
-            />
+                         {/* Gráfico Pessoal Simples */}
+             <Card className="shadow-md border-0 bg-white">
+               <CardHeader className="pb-3">
+                 <CardTitle className="text-lg font-bold text-gray-900">Minha Performance - 7 Dias</CardTitle>
+               </CardHeader>
+               <CardContent>
+                 <Chart
+                   data={chartData}
+                   title=""
+                   type="line"
+                   height={180}
+                 />
+               </CardContent>
+             </Card>
 
-            {/* Recompensas Monetárias */}
-            <Card className="shadow-md border-0 bg-white">
+             {/* Recompensas Monetárias */}
+             <Card className="shadow-md border-0 bg-white">
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg font-bold text-gray-900">Recompensas Monetárias</CardTitle>
               </CardHeader>
@@ -681,43 +725,98 @@ export default function CollaboratorHome() {
                     </div>
                   </div>
 
-                  {/* Lista de metas com recompensas */}
-                  {rewardStats?.rewardsByPeriod && rewardStats.rewardsByPeriod.length > 0 && (
-                    <div className="space-y-2">
-                      <div className="text-sm font-medium text-gray-700 mb-2">Metas com Recompensas:</div>
-                      {rewardStats.rewardsByPeriod.slice(0, 3).map((reward, index) => (
-                        <div key={reward.goalId} className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded">
-                          <div className="flex-1">
-                            <div className="text-sm font-medium text-gray-800 truncate">
-                              {reward.goalTitle}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              {formatPeriodDisplay(reward.periodType)} • 
-                              {reward.daysAchieved}/{reward.totalDaysInPeriod} dias • 
-                              {Math.round(reward.completionRate)}%
-                            </div>
-                            <div className="text-xs text-blue-600">
-                              Diário: {formatCurrency(centavosToReais(reward.dailyValue))}
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-sm font-bold text-green-600">
-                              {formatCurrency(centavosToReais(reward.earnedAmount))}
-                            </div>
-                            <div className="text-xs text-gray-400">
-                              de {formatCurrency(centavosToReais(reward.totalMonetaryValue))}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                      
-                      {rewardStats.rewardsByPeriod.length > 3 && (
-                        <div className="text-xs text-gray-500 text-center py-1">
-                          +{rewardStats.rewardsByPeriod.length - 3} metas adicionais
-                        </div>
-                      )}
-                    </div>
-                  )}
+                                     {/* Lista de metas com recompensas */}
+                   {rewardStats?.rewardsByPeriod && rewardStats.rewardsByPeriod.length > 0 && (
+                     <div className="space-y-3">
+                       <div className="text-sm font-medium text-gray-700 mb-3">Metas com Recompensas:</div>
+                       {rewardStats.rewardsByPeriod.slice(0, 3).map((reward, index) => (
+                         <div key={reward.goalId} className="bg-gradient-to-r from-gray-50 to-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                           <div className="flex items-start justify-between">
+                             <div className="flex-1">
+                               <div className="flex items-center gap-2 mb-2">
+                                 <div className="text-sm font-semibold text-gray-800">
+                                   {reward.goalTitle}
+                                 </div>
+                                 <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                   reward.goalType === 'numeric' ? 'bg-blue-100 text-blue-700' :
+                                   reward.goalType === 'task_completion' ? 'bg-green-100 text-green-700' :
+                                   'bg-purple-100 text-purple-700'
+                                 }`}>
+                                   {reward.goalType === 'numeric' ? 'Numérico' : 
+                                    reward.goalType === 'task_completion' ? 'Tarefa' : 'Checklist'}
+                                 </div>
+                               </div>
+                               
+                               <div className="space-y-2">
+                                 <div className="flex items-center gap-3 text-xs text-gray-600">
+                                   <span className="flex items-center gap-1">
+                                     <Calendar className="w-3 h-3" />
+                                     {formatPeriodDisplay(reward.periodType)}
+                                   </span>
+                                   <span className="flex items-center gap-1">
+                                     <Target className="w-3 h-3" />
+                                     {reward.daysAchieved}/{reward.totalDaysInPeriod} dias
+                                   </span>
+                                   <span className="flex items-center gap-1">
+                                     <TrendingUp className="w-3 h-3" />
+                                     {Math.round(reward.completionRate)}%
+                                   </span>
+                                 </div>
+                                 
+                                 {reward.goalType === 'numeric' && reward.currentValue && (
+                                   <div className="bg-blue-50 rounded-lg p-2">
+                                     <div className="flex items-center justify-between text-xs">
+                                       <span className="text-blue-700 font-medium">Progresso Atual</span>
+                                       <span className="text-blue-600">{reward.currentValue}/{reward.targetValue}</span>
+                                     </div>
+                                     <div className="w-full bg-blue-200 rounded-full h-1.5 mt-1">
+                                       <div 
+                                         className="bg-blue-600 h-1.5 rounded-full transition-all duration-300" 
+                                         style={{ width: `${Math.min((reward.currentValue || 0) / reward.targetValue * 100, 100)}%` }}
+                                       ></div>
+                                     </div>
+                                     <div className="text-xs text-blue-600 mt-1 text-center">
+                                       {Math.round((reward.currentValue || 0) / reward.targetValue * 100)}% concluído
+                                     </div>
+                                   </div>
+                                 )}
+                                 
+                                 <div className="text-xs text-gray-500">
+                                   {reward.goalType === 'numeric' ? (
+                                     `Recompensa proporcional baseada no progresso`
+                                   ) : (
+                                     `Recompensa diária: ${formatCurrency(centavosToReais(reward.dailyValue))}`
+                                   )}
+                                 </div>
+                               </div>
+                             </div>
+                             
+                             <div className="text-right ml-4">
+                               <div className="text-lg font-bold text-green-600">
+                                 {formatCurrency(centavosToReais(reward.earnedAmount))}
+                               </div>
+                               <div className="text-xs text-gray-400">
+                                 de {formatCurrency(centavosToReais(reward.totalMonetaryValue))}
+                               </div>
+                               <div className={`text-xs mt-1 px-2 py-1 rounded-full ${
+                                 reward.isEarned ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                               }`}>
+                                 {reward.isEarned ? '✅ Ganho' : '⏳ Pendente'}
+                               </div>
+                             </div>
+                           </div>
+                         </div>
+                       ))}
+                       
+                       {rewardStats.rewardsByPeriod.length > 3 && (
+                         <div className="text-center py-3">
+                           <div className="text-xs text-gray-500 bg-gray-100 rounded-lg py-2 px-3 inline-block">
+                             +{rewardStats.rewardsByPeriod.length - 3} metas adicionais disponíveis
+                           </div>
+                         </div>
+                       )}
+                     </div>
+                   )}
 
                   {(!rewardStats?.rewardsByPeriod || rewardStats.rewardsByPeriod.length === 0) && (
                     <div className="text-center py-4 text-gray-500">
@@ -729,6 +828,8 @@ export default function CollaboratorHome() {
             </Card>
           </div>
         </div>
+
+
       </div>
     </div>
   );

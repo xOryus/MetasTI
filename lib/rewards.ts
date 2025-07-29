@@ -12,7 +12,8 @@ import {
   startOfQuarter, endOfQuarter,
   startOfYear, endOfYear,
   isWithinInterval,
-  parseISO
+  parseISO,
+  isSameDay
 } from 'date-fns';
 
 /**
@@ -31,6 +32,9 @@ export interface CalculatedReward {
   daysAchieved: number; // quantos dias foram atingidos
   totalDaysInPeriod: number; // total de dias no período
   earnedAmount: number; // valor efetivamente ganho em centavos
+  goalType: string; // tipo da meta para debug
+  targetValue: number; // valor alvo da meta
+  currentValue?: number; // valor atual (para metas numéricas)
 }
 
 /**
@@ -120,7 +124,7 @@ export const calculateDailyRewardValue = (
 
 /**
  * Verificar se uma meta foi atingida no período especificado
- * Retorna também o número de dias que a meta foi atingida
+ * Versão refatorada com melhor suporte para diferentes tipos de meta
  */
 export const isGoalAchievedInPeriod = (
   goal: SectorGoal,
@@ -128,7 +132,7 @@ export const isGoalAchievedInPeriod = (
   userId: string,
   periodStart: Date,
   periodEnd: Date
-): { achieved: boolean; completionRate: number; daysAchieved: number; totalDaysInPeriod: number } => {
+): { achieved: boolean; completionRate: number; daysAchieved: number; totalDaysInPeriod: number; currentValue?: number } => {
   // Filtrar submissões do usuário no período
   const userSubmissions = submissions.filter(sub => 
     sub.userProfile.userId === userId &&
@@ -143,6 +147,8 @@ export const isGoalAchievedInPeriod = (
 
   // Contar quantos dias a meta foi atingida
   let daysAchieved = 0;
+  let totalCurrentValue = 0;
+  let submissionsWithValue = 0;
   
   for (const submission of userSubmissions) {
     try {
@@ -150,12 +156,27 @@ export const isGoalAchievedInPeriod = (
       const goalResult = checklist[goal.$id!];
       
       let dayAchieved = false;
+      let currentValue = 0;
       
       if (typeof goalResult === 'boolean') {
+        // Para metas booleanas (task_completion, boolean_checklist)
         dayAchieved = goalResult;
       } else if (goal.type === 'numeric' || goal.type === 'percentage') {
-        const value = parseFloat(goalResult) || 0;
-        dayAchieved = value >= goal.targetValue;
+        // Para metas numéricas e de porcentagem
+        currentValue = parseFloat(goalResult) || 0;
+        
+        if (goal.type === 'numeric') {
+          // Meta numérica: atingido se valor >= targetValue
+          dayAchieved = currentValue >= goal.targetValue;
+        } else if (goal.type === 'percentage') {
+          // Meta de porcentagem: atingido se valor >= targetValue%
+          dayAchieved = currentValue >= goal.targetValue;
+        }
+        
+        if (currentValue > 0) {
+          totalCurrentValue += currentValue;
+          submissionsWithValue++;
+        }
       }
       
       if (dayAchieved) {
@@ -176,11 +197,21 @@ export const isGoalAchievedInPeriod = (
   const requiredRate = goal.period === GoalPeriod.DAILY ? 100 : 80;
   const achieved = completionRate >= requiredRate;
 
-  return { achieved, completionRate, daysAchieved, totalDaysInPeriod };
+  // Calcular valor médio atual para metas numéricas
+  const averageCurrentValue = submissionsWithValue > 0 ? totalCurrentValue / submissionsWithValue : 0;
+
+  return { 
+    achieved, 
+    completionRate, 
+    daysAchieved, 
+    totalDaysInPeriod,
+    currentValue: averageCurrentValue
+  };
 };
 
 /**
  * Calcular recompensas de um usuário para suas metas individuais
+ * Versão refatorada com melhor integração entre tipos de meta e períodos
  */
 export const calculateUserRewards = (
   goals: SectorGoal[],
@@ -212,7 +243,7 @@ export const calculateUserRewards = (
 
   for (const goal of userGoalsWithRewards) {
     const periodInterval = getPeriodInterval(goal.period, referenceDate);
-    const { achieved, completionRate, daysAchieved, totalDaysInPeriod } = isGoalAchievedInPeriod(
+    const { achieved, completionRate, daysAchieved, totalDaysInPeriod, currentValue } = isGoalAchievedInPeriod(
       goal, 
       submissions, 
       userId, 
@@ -222,7 +253,17 @@ export const calculateUserRewards = (
 
     // Calcular valor diário e valor ganho
     const dailyValue = calculateDailyRewardValue(goal.monetaryValue!, goal.period, referenceDate);
-    const earnedAmount = daysAchieved * dailyValue;
+    
+    // Para metas numéricas, calcular proporcionalmente ao progresso
+    let earnedAmount = 0;
+    if (goal.type === 'numeric' && currentValue && currentValue > 0) {
+      // Calcular proporção do progresso
+      const progressRatio = Math.min(currentValue / goal.targetValue, 1);
+      earnedAmount = Math.round(goal.monetaryValue! * progressRatio);
+    } else {
+      // Para outros tipos, usar dias atingidos
+      earnedAmount = daysAchieved * dailyValue;
+    }
 
     const reward: CalculatedReward = {
       goalId: goal.$id!,
@@ -236,7 +277,10 @@ export const calculateUserRewards = (
       completionRate,
       daysAchieved,
       totalDaysInPeriod,
-      earnedAmount
+      earnedAmount,
+      goalType: goal.type,
+      targetValue: goal.targetValue,
+      currentValue
     };
 
     rewardsByPeriod.push(reward);
@@ -341,7 +385,7 @@ export const calculateMonthlyEarnings = (
       periodInterval.end >= monthInterval.start;
 
     if (periodsOverlap) {
-      const { daysAchieved } = isGoalAchievedInPeriod(
+      const { daysAchieved, currentValue } = isGoalAchievedInPeriod(
         goal, 
         submissions, 
         userId, 
@@ -349,10 +393,18 @@ export const calculateMonthlyEarnings = (
         periodInterval.end
       );
 
-      if (daysAchieved > 0) {
-        const dailyValue = calculateDailyRewardValue(goal.monetaryValue!, goal.period, month);
-        const earnedAmount = daysAchieved * dailyValue;
-        totalEarnings += earnedAmount;
+      if (daysAchieved > 0 || (goal.type === 'numeric' && currentValue && currentValue > 0)) {
+        if (goal.type === 'numeric' && currentValue && currentValue > 0) {
+          // Para metas numéricas, calcular proporcionalmente
+          const progressRatio = Math.min(currentValue / goal.targetValue, 1);
+          const earnedAmount = Math.round(goal.monetaryValue! * progressRatio);
+          totalEarnings += earnedAmount;
+        } else {
+          // Para outros tipos, usar dias atingidos
+          const dailyValue = calculateDailyRewardValue(goal.monetaryValue!, goal.period, month);
+          const earnedAmount = daysAchieved * dailyValue;
+          totalEarnings += earnedAmount;
+        }
       }
     }
   }
