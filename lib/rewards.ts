@@ -51,34 +51,51 @@ export interface UserRewardStats {
 
 /**
  * Obter intervalo de datas baseado no período da meta
+ * VERSÃO CORRIGIDA: Usa períodos baseados no mês atual para metas mensais
  */
-export const getPeriodInterval = (period: GoalPeriod, referenceDate: Date = new Date()) => {
+export const getPeriodInterval = (
+  period: GoalPeriod, 
+  goalCreatedAt: string, // Data de criação da meta
+  referenceDate: Date = new Date()
+) => {
+  const goalCreationDate = parseISO(goalCreatedAt);
+  
   switch (period) {
     case GoalPeriod.DAILY:
+      // Período diário: 24 horas a partir da criação
       return {
-        start: startOfDay(referenceDate),
-        end: endOfDay(referenceDate)
+        start: startOfDay(goalCreationDate),
+        end: endOfDay(goalCreationDate)
       };
+      
     case GoalPeriod.WEEKLY:
+      // Período semanal: 7 dias a partir da criação
       return {
-        start: startOfWeek(referenceDate, { weekStartsOn: 1 }), // Segunda-feira
-        end: endOfWeek(referenceDate, { weekStartsOn: 1 })
+        start: startOfDay(goalCreationDate),
+        end: endOfDay(new Date(goalCreationDate.getTime() + (6 * 24 * 60 * 60 * 1000))) // +6 dias
       };
+      
     case GoalPeriod.MONTHLY:
+      // Período mensal: do dia da criação até o último dia do mês
       return {
-        start: startOfMonth(referenceDate),
-        end: endOfMonth(referenceDate)
+        start: startOfDay(goalCreationDate),
+        end: endOfMonth(goalCreationDate) // Último dia do mês da criação
       };
+      
     case GoalPeriod.QUARTERLY:
+      // Período trimestral: do dia da criação até o final do trimestre
       return {
-        start: startOfQuarter(referenceDate),
-        end: endOfQuarter(referenceDate)
+        start: startOfDay(goalCreationDate),
+        end: endOfQuarter(goalCreationDate) // Final do trimestre da criação
       };
+      
     case GoalPeriod.YEARLY:
+      // Período anual: do dia da criação até o final do ano
       return {
-        start: startOfYear(referenceDate),
-        end: endOfYear(referenceDate)
+        start: startOfDay(goalCreationDate),
+        end: endOfYear(goalCreationDate) // Final do ano da criação
       };
+      
     default:
       throw new Error(`Período não suportado: ${period}`);
   }
@@ -87,27 +104,16 @@ export const getPeriodInterval = (period: GoalPeriod, referenceDate: Date = new 
 /**
  * Obter número de dias em um período específico
  */
-export const getDaysInPeriod = (period: GoalPeriod, referenceDate: Date = new Date()): number => {
-  switch (period) {
-    case GoalPeriod.DAILY:
-      return 1;
-    case GoalPeriod.WEEKLY:
-      return 7;
-    case GoalPeriod.MONTHLY:
-      // Pegar o número real de dias no mês atual
-      const monthInterval = getPeriodInterval(GoalPeriod.MONTHLY, referenceDate);
-      return Math.ceil((monthInterval.end.getTime() - monthInterval.start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-    case GoalPeriod.QUARTERLY:
-      // Aproximadamente 90 dias (pode variar)
-      const quarterInterval = getPeriodInterval(GoalPeriod.QUARTERLY, referenceDate);
-      return Math.ceil((quarterInterval.end.getTime() - quarterInterval.start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-    case GoalPeriod.YEARLY:
-      // Verificar se é ano bissexto
-      const year = referenceDate.getFullYear();
-      return ((year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0)) ? 366 : 365;
-    default:
-      return 1;
-  }
+export const getDaysInPeriod = (period: GoalPeriod, goalCreatedAt: string, referenceDate: Date = new Date()): number => {
+  const periodInterval = getPeriodInterval(period, goalCreatedAt, referenceDate);
+  return Math.ceil((periodInterval.end.getTime() - periodInterval.start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+};
+
+/**
+ * Verificar se dois intervalos de tempo se sobrepõem
+ */
+export const doPeriodsOverlap = (period1: { start: Date; end: Date }, period2: { start: Date; end: Date }): boolean => {
+  return period1.start <= period2.end && period1.end >= period2.start;
 };
 
 /**
@@ -116,9 +122,11 @@ export const getDaysInPeriod = (period: GoalPeriod, referenceDate: Date = new Da
 export const calculateDailyRewardValue = (
   monetaryValue: number, // em centavos
   period: GoalPeriod,
+  goalCreatedAt: string, // Data de criação da meta
   referenceDate: Date = new Date()
 ): number => {
-  const daysInPeriod = getDaysInPeriod(period, referenceDate);
+  const periodInterval = getPeriodInterval(period, goalCreatedAt, referenceDate);
+  const daysInPeriod = Math.ceil((periodInterval.end.getTime() - periodInterval.start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
   return Math.round(monetaryValue / daysInPeriod);
 };
 
@@ -236,13 +244,13 @@ export const calculateUserRewards = (
   let totalPendingRewards = 0;
   let totalAvailableRewards = 0;
 
-  // Obter intervalos de referência
-  const todayInterval = getPeriodInterval(GoalPeriod.DAILY, referenceDate);
-  const weekInterval = getPeriodInterval(GoalPeriod.WEEKLY, referenceDate);
-  const monthInterval = getPeriodInterval(GoalPeriod.MONTHLY, referenceDate);
+  // Obter intervalos de referência para contabilização
+  const todayInterval = getPeriodInterval(GoalPeriod.DAILY, referenceDate.toISOString(), referenceDate);
+  const weekInterval = getPeriodInterval(GoalPeriod.WEEKLY, referenceDate.toISOString(), referenceDate);
+  const monthInterval = getPeriodInterval(GoalPeriod.MONTHLY, referenceDate.toISOString(), referenceDate);
 
   for (const goal of userGoalsWithRewards) {
-    const periodInterval = getPeriodInterval(goal.period, referenceDate);
+    const periodInterval = getPeriodInterval(goal.period, goal.$createdAt!, referenceDate);
     const { achieved, completionRate, daysAchieved, totalDaysInPeriod, currentValue } = isGoalAchievedInPeriod(
       goal, 
       submissions, 
@@ -252,7 +260,7 @@ export const calculateUserRewards = (
     );
 
     // Calcular valor diário e valor ganho
-    const dailyValue = calculateDailyRewardValue(goal.monetaryValue!, goal.period, referenceDate);
+    const dailyValue = calculateDailyRewardValue(goal.monetaryValue!, goal.period, goal.$createdAt!, referenceDate);
     
     // Para metas numéricas, calcular proporcionalmente ao progresso
     let earnedAmount = 0;
@@ -296,19 +304,16 @@ export const calculateUserRewards = (
         totalPendingRewards += earnedAmount;
       }
 
-      // Contabilizar recompensas por período de referência
-      if (isWithinInterval(periodInterval.start, monthInterval) || 
-          isWithinInterval(periodInterval.end, monthInterval)) {
+      // Contabilizar recompensas por período de referência usando sobreposição
+      if (doPeriodsOverlap(periodInterval, monthInterval)) {
         totalEarnedThisMonth += earnedAmount;
       }
 
-      if (isWithinInterval(periodInterval.start, weekInterval) || 
-          isWithinInterval(periodInterval.end, weekInterval)) {
+      if (doPeriodsOverlap(periodInterval, weekInterval)) {
         totalEarnedThisWeek += earnedAmount;
       }
 
-      if (isWithinInterval(periodInterval.start, todayInterval) || 
-          isWithinInterval(periodInterval.end, todayInterval)) {
+      if (doPeriodsOverlap(periodInterval, todayInterval)) {
         totalEarnedToday += earnedAmount;
       }
     }
@@ -342,16 +347,16 @@ export const formatPeriodDisplay = (period: GoalPeriod): string => {
 /**
  * Obter próxima data de reset do período
  */
-export const getNextPeriodReset = (period: GoalPeriod, referenceDate: Date = new Date()): Date => {
-  const interval = getPeriodInterval(period, referenceDate);
+export const getNextPeriodReset = (period: GoalPeriod, goalCreatedAt: string, referenceDate: Date = new Date()): Date => {
+  const interval = getPeriodInterval(period, goalCreatedAt, referenceDate);
   return interval.end;
 };
 
 /**
  * Verificar se um período está ativo (ainda não terminou)
  */
-export const isPeriodActive = (period: GoalPeriod, referenceDate: Date = new Date()): boolean => {
-  const interval = getPeriodInterval(period, referenceDate);
+export const isPeriodActive = (period: GoalPeriod, goalCreatedAt: string, referenceDate: Date = new Date()): boolean => {
+  const interval = getPeriodInterval(period, goalCreatedAt, referenceDate);
   return referenceDate <= interval.end;
 };
 
@@ -364,7 +369,8 @@ export const calculateMonthlyEarnings = (
   userId: string,
   month: Date
 ): number => {
-  const monthInterval = getPeriodInterval(GoalPeriod.MONTHLY, month);
+  // Para compatibilidade, usar o mês como referência para períodos fixos
+  const monthInterval = getPeriodInterval(GoalPeriod.MONTHLY, month.toISOString(), month);
   const userGoalsWithRewards = goals.filter(goal => 
     goal.scope === 'individual' && 
     goal.assignedUserId === userId &&
@@ -377,12 +383,10 @@ export const calculateMonthlyEarnings = (
   let totalEarnings = 0;
 
   for (const goal of userGoalsWithRewards) {
-    const periodInterval = getPeriodInterval(goal.period, month);
+    const periodInterval = getPeriodInterval(goal.period, goal.$createdAt!, month);
     
     // Verificar se o período da meta se sobrepõe com o mês consultado
-    const periodsOverlap = 
-      periodInterval.start <= monthInterval.end && 
-      periodInterval.end >= monthInterval.start;
+    const periodsOverlap = doPeriodsOverlap(periodInterval, monthInterval);
 
     if (periodsOverlap) {
       const { daysAchieved, currentValue } = isGoalAchievedInPeriod(
@@ -401,7 +405,7 @@ export const calculateMonthlyEarnings = (
           totalEarnings += earnedAmount;
         } else {
           // Para outros tipos, usar dias atingidos
-          const dailyValue = calculateDailyRewardValue(goal.monetaryValue!, goal.period, month);
+          const dailyValue = calculateDailyRewardValue(goal.monetaryValue!, goal.period, goal.$createdAt!, month);
           const earnedAmount = daysAchieved * dailyValue;
           totalEarnings += earnedAmount;
         }

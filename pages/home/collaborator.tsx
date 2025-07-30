@@ -7,6 +7,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
 import { ChecklistForm } from '@/components/ChecklistForm';
 import { Chart } from '@/components/Chart';
 import { useAuth } from '@/hooks/useAuth';
@@ -85,6 +86,115 @@ export default function CollaboratorHome() {
     
     return { checklistGoals, individualGoals };
   }, [sectorGoals]);
+
+  // NOVA LÓGICA: Calcular itens de checklist com progresso parcial
+  const checklistItemsWithProgress = useMemo(() => {
+    if (!profile?.userId || !goalsByType.checklistGoals.length) {
+      return [];
+    }
+
+    return goalsByType.checklistGoals.flatMap(goal => {
+      // Buscar todas as submissões deste usuário para esta meta
+      const goalSubmissions = submissions.filter(sub => {
+        try {
+          const checklist = JSON.parse(sub.checklist);
+          return checklist[goal.$id!] !== undefined;
+        } catch {
+          return false;
+        }
+      });
+
+      // Calcular itens já completados
+      const completedItems = new Set<string>();
+      goalSubmissions.forEach(sub => {
+        try {
+          const checklist = JSON.parse(sub.checklist);
+          const goalData = checklist[goal.$id!];
+          
+          if (Array.isArray(goalData)) {
+            // Se for array de itens (formato antigo)
+            goalData.forEach((completed: boolean, index: number) => {
+              if (completed) {
+                completedItems.add(`${goal.$id}-${index}`);
+              }
+            });
+          } else if (typeof goalData === 'object') {
+            // Se for objeto com IDs dos itens
+            Object.entries(goalData).forEach(([itemId, completed]) => {
+              if (completed) {
+                completedItems.add(itemId);
+              }
+            });
+          }
+        } catch {
+          // Ignora erros de parsing
+        }
+      });
+
+      // Retornar apenas itens não completados
+      return goal.items
+        .filter((item: any) => !completedItems.has(item.id))
+        .map((item: any) => ({
+          ...item,
+          goalTitle: goal.title,
+          goalDescription: goal.description,
+          goalId: goal.$id
+        }));
+    });
+  }, [goalsByType.checklistGoals, submissions, profile?.userId]);
+
+  // NOVA LÓGICA: Calcular metas individuais com progresso parcial
+  const individualGoalsWithProgress = useMemo(() => {
+    if (!profile?.userId || !goalsByType.individualGoals.length) {
+      return [];
+    }
+
+    return goalsByType.individualGoals.filter(goal => {
+      // Buscar todas as submissões deste usuário para esta meta
+      const goalSubmissions = submissions.filter(sub => {
+        try {
+          const checklist = JSON.parse(sub.checklist);
+          return checklist[goal.$id!] !== undefined;
+        } catch {
+          return false;
+        }
+      });
+
+      // Se não tem submissões, mostrar a meta
+      if (goalSubmissions.length === 0) {
+        return true;
+      }
+
+      // Verificar se a meta já foi completada baseado no tipo
+      const lastSubmission = goalSubmissions[goalSubmissions.length - 1];
+      try {
+        const checklist = JSON.parse(lastSubmission.checklist);
+        const goalData = checklist[goal.$id!];
+
+        switch (goal.type) {
+          case 'numeric':
+            // Para metas numéricas, verificar se atingiu o targetValue
+            const currentValue = parseFloat(goalData) || 0;
+            return currentValue < goal.targetValue;
+          
+          case 'percentage':
+            // Para metas de porcentagem, verificar se atingiu o targetValue
+            const currentPercentage = parseFloat(goalData) || 0;
+            return currentPercentage < goal.targetValue;
+          
+          case 'task_completion':
+            // Para tarefas, verificar se foi completada
+            return !Boolean(goalData);
+          
+          default:
+            return true;
+        }
+      } catch {
+        // Se erro no parsing, mostrar a meta
+        return true;
+      }
+    });
+  }, [goalsByType.individualGoals, submissions, profile?.userId]);
 
   // Manter compatibilidade com ChecklistForm (apenas para metas do tipo checklist)
   const checklistItems = useMemo(() => {
@@ -203,7 +313,7 @@ export default function CollaboratorHome() {
       setSubmitError(null);
       logger.form.submit('all-goals');
       
-      // Combinar todos os dados em um formato compatível com o sistema existente
+      // NOVA LÓGICA: Combinar dados com progresso parcial para checklists
       const combinedAnswers: Record<string, any> = { ...checklistData };
       
       // Para metas individuais, preservar os valores originais para cálculo correto
@@ -225,6 +335,19 @@ export default function CollaboratorHome() {
         }
       });
       
+      // Para checklists, salvar apenas os itens marcados hoje (progresso parcial)
+      goalsByType.checklistGoals.forEach(goal => {
+        const todayItems = goal.items.filter((item: any) => checklistData[item.id]);
+        if (todayItems.length > 0) {
+          // Salvar apenas os itens completados hoje
+          const todayProgress: Record<string, boolean> = {};
+          todayItems.forEach((item: any) => {
+            todayProgress[item.id] = true;
+          });
+          combinedAnswers[goal.$id!] = todayProgress;
+        }
+      });
+      
       // Usar o primeiro arquivo encontrado (podemos melhorar isso depois para múltiplos arquivos)
       const firstFile = Object.values(goalFiles)[0];
       if (!firstFile) {
@@ -235,9 +358,9 @@ export default function CollaboratorHome() {
       await createSubmission(profile.$id, combinedAnswers, generalObservation, firstFile);
       
       logger.form.success('all-goals');
-      alert('Todas as metas foram enviadas com sucesso!');
+      alert('Progresso salvo com sucesso!');
       
-      // Limpar dados após envio
+      // Limpar apenas os dados de hoje, mantendo o progresso histórico
       setIndividualGoalData({});
       setChecklistData({});
       setGeneralObservation('');
@@ -410,230 +533,151 @@ export default function CollaboratorHome() {
                 )}
               </CardHeader>
               <CardContent>
-                                 {goalsLoading ? (
-                   <div className="text-center py-8">
-                     <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto"></div>
-                     <p className="mt-3 text-gray-600">Carregando metas do setor...</p>
-                   </div>
-                                 ) : (checklistItems.length === 0 && goalsByType.individualGoals.length === 0) ? (
-                   <div className="text-center py-8 text-gray-500">
-                     <Target className="w-12 h-12 mx-auto mb-3 text-blue-400" />
-                     <h3 className="text-lg font-medium text-gray-700 mb-2">
-                       Nenhuma meta configurada
-                     </h3>
-                     <p className="text-sm">
-                       O administrador ainda não configurou metas para o setor {profile?.sector}.
-                     </p>
-                   </div>
-                ) : !hasSubmittedToday ? (
-                                     <div className="space-y-6">
-                     {/* Metas Individuais */}
-                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                       {goalsByType.individualGoals.map(goal => (
-                      <Card key={goal.$id} className="border border-gray-200">
-                        <CardHeader className="pb-3">
-                          <CardTitle className="text-lg font-semibold text-gray-800">
-                            {goal.title}
-                          </CardTitle>
-                          <p className="text-sm text-gray-600">{goal.description}</p>
-                          <div className="flex items-center gap-2 text-xs text-gray-500">
-                            <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full">
-                              {goal.type === 'numeric' ? 'Numérico' : 
-                               goal.type === 'percentage' ? 'Porcentagem' : 
-                               goal.type === 'task_completion' ? 'Tarefa' : goal.type}
-                            </span>
-                            {(goal.type === 'numeric' || goal.type === 'percentage') && (
-                              <span>Meta: {goal.targetValue}{goal.type === 'percentage' ? '%' : ''}</span>
-                            )}
-                            {/* Exibir recompensa monetária se existir */}
-                            {goal.hasMonetaryReward && goal.monetaryValue && (
-                              <div className="flex flex-col gap-1">
-                                <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full font-medium text-xs">
-                                  💰 {formatCurrency(centavosToReais(goal.monetaryValue))} - {formatPeriodDisplay(goal.period)}
-                                </span>
-                                <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full font-medium text-xs">
-                                  Diário: {formatCurrency(centavosToReais(calculateDailyRewardValue(goal.monetaryValue, goal.period)))}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-4">
-                            {goal.type === 'numeric' && (
-                              <div className="space-y-3">
-                                <label className="block text-sm font-medium text-gray-700">
-                                  Valor Atual:
-                                </label>
-                                <input
-                                  type="number"
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                  placeholder={`Meta: ${goal.targetValue}`}
-                                  min="0"
-                                  value={individualGoalData[goal.$id!] || ''}
-                                  onChange={(e) => updateIndividualGoalData(goal.$id!, parseFloat(e.target.value) || 0)}
-                                />
-                              </div>
-                            )}
-                            {goal.type === 'percentage' && (
-                              <div className="space-y-3">
-                                <label className="block text-sm font-medium text-gray-700">
-                                  Porcentagem Atual (%):
-                                </label>
-                                <input
-                                  type="number"
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                  placeholder={`Meta: ${goal.targetValue}%`}
-                                  min="0"
-                                  max="100"
-                                  value={individualGoalData[goal.$id!] || ''}
-                                  onChange={(e) => updateIndividualGoalData(goal.$id!, parseFloat(e.target.value) || 0)}
-                                />
-                              </div>
-                            )}
-                            {goal.type === 'task_completion' && (
-                              <div className="space-y-3">
-                                <label className="flex items-center space-x-2">
-                                  <input
-                                    type="checkbox"
-                                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                                    checked={individualGoalData[goal.$id!] || false}
-                                    onChange={(e) => updateIndividualGoalData(goal.$id!, e.target.checked)}
-                                  />
-                                  <span className="text-sm text-gray-700">Tarefa concluída</span>
-                                </label>
-                              </div>
-                            )}
-                            
-                            {/* Campo de upload para cada meta individual */}
-                            <div className="pt-3 border-t border-gray-200">
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Comprovação desta meta:
-                              </label>
-                              <input
-                                type="file"
-                                accept="image/*,.pdf,.doc,.docx"
-                                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 file:mr-4 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-sm file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0];
-                                  if (file) updateGoalFile(goal.$id!, file);
-                                }}
-                              />
-                              <p className="text-xs text-gray-500 mt-1">
-                                Formatos aceitos: Imagens, PDF, DOC, DOCX
-                              </p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                    </div>
-                    
-                    {/* Metas do tipo Checklist */}
-                    {goalsByType.checklistGoals.map(goal => (
-                      <Card key={goal.$id} className="border border-gray-200">
-                        <CardHeader className="pb-3">
-                          <CardTitle className="text-lg font-semibold text-gray-800">
-                            {goal.title}
-                          </CardTitle>
-                          <p className="text-sm text-gray-600">{goal.description}</p>
-                          <div className="flex items-center gap-2 text-xs text-gray-500">
-                            <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full">
-                              Lista de Verificação
-                            </span>
-                            <span>{goal.items.length} itens</span>
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-4">
-                            <div className="space-y-2">
-                              {goal.items.map((item: any) => (
-                                <label key={item.id} className="flex items-center space-x-2">
-                                  <input
-                                    type="checkbox"
-                                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                                    checked={checklistData[item.id] || false}
-                                    onChange={(e) => updateChecklistData(item.id, e.target.checked)}
-                                  />
-                                  <span className="text-sm text-gray-700">{item.label}</span>
-                                </label>
-                              ))}
-                            </div>
-                            
-                            {/* Campo de upload para checklist */}
-                            <div className="pt-3 border-t border-gray-200">
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Comprovação deste checklist:
-                              </label>
-                              <input
-                                type="file"
-                                accept="image/*,.pdf,.doc,.docx"
-                                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 file:mr-4 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-sm file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0];
-                                  if (file) updateGoalFile(goal.$id!, file);
-                                }}
-                              />
-                              <p className="text-xs text-gray-500 mt-1">
-                                Formatos aceitos: Imagens, PDF, DOC, DOCX
-                              </p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-
-                    {/* Seção de Observações Gerais e Envio */}
-                    <Card className="border border-gray-200 bg-gray-50">
-                      <CardHeader>
-                        <CardTitle className="text-lg font-semibold text-gray-800">
-                          Finalizar Envio
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Observações Gerais (opcional):
-                          </label>
-                          <textarea
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            rows={3}
-                            placeholder="Adicione observações gerais sobre todas as metas do dia..."
-                            value={generalObservation}
-                            onChange={(e) => setGeneralObservation(e.target.value)}
-                          />
-                          <p className="text-xs text-gray-500 mt-1">
-                            Use este campo para comentários que se aplicam a todas as metas
-                          </p>
-                        </div>
-                        
-                        <Button 
-                          className="w-full" 
-                          disabled={submitLoading}
-                          onClick={handleSubmit}
-                        >
-                          {submitLoading ? 'Enviando...' : 'Enviar Todas as Metas'}
-                        </Button>
-                        
-                        {submitError && (
-                          <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                            <p className="text-red-800 text-sm">{submitError}</p>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
+                {goalsLoading ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto"></div>
+                    <p className="mt-3 text-gray-600">Carregando metas do setor...</p>
                   </div>
-                                 ) : (
-                   <div className="text-center py-8 text-gray-500">
-                     <Target className="w-12 h-12 mx-auto mb-3 text-green-500" />
-                     <h3 className="text-lg font-medium text-gray-700 mb-2">
-                       Parabéns! Metas do dia concluídas
-                     </h3>
-                     <p className="text-sm">
-                       Você já enviou seu checklist hoje. Volte amanhã para novas metas!
-                     </p>
-                   </div>
-                 )}
+                ) : (checklistItemsWithProgress.length === 0 && individualGoalsWithProgress.length === 0) ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <Target className="w-12 h-12 mx-auto mb-3 text-blue-400" />
+                    <h3 className="text-lg font-medium text-gray-700 mb-2">Nenhuma meta configurada</h3>
+                    <p className="text-sm">O administrador ainda não configurou metas para o setor {profile?.sector}.</p>
+                  </div>
+                ) : !hasSubmittedToday ? (
+                  <div className="space-y-6">
+                    {/* Metas Individuais com Progresso Parcial */}
+                    {individualGoalsWithProgress.length > 0 ? (
+                      <div className="space-y-4">
+                        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                          <h3 className="text-lg font-semibold text-green-800 mb-2">🎯 Metas Pendentes - Progresso Parcial</h3>
+                          <p className="text-sm text-green-700">Mostrando apenas as metas que ainda não foram completadas. Você pode salvar o progresso a qualquer momento.</p>
+                        </div>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                          {individualGoalsWithProgress.map(goal => (
+                            <Card key={goal.$id} className="border border-gray-200">
+                              <CardHeader className="pb-3">
+                                <CardTitle className="text-lg font-semibold text-gray-800">{goal.title}</CardTitle>
+                                <p className="text-sm text-gray-600">{goal.description}</p>
+                                <div className="flex items-center gap-2 text-xs text-gray-500">
+                                  <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full">{goal.type === 'numeric' ? 'Numérico' : goal.type === 'percentage' ? 'Porcentagem' : goal.type === 'task_completion' ? 'Tarefa' : goal.type}</span>
+                                  {(goal.type === 'numeric' || goal.type === 'percentage') && (<span>Meta: {goal.targetValue}{goal.type === 'percentage' ? '%' : ''}</span>)}
+                                  {goal.hasMonetaryReward && goal.monetaryValue && (
+                                    <div className="flex flex-col gap-1">
+                                      <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full font-medium text-xs">💰 {formatCurrency(centavosToReais(goal.monetaryValue))} - {formatPeriodDisplay(goal.period)}</span>
+                                      <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full font-medium text-xs">Diário: {formatCurrency(centavosToReais(calculateDailyRewardValue(goal.monetaryValue, goal.period, goal.$createdAt!)))}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="space-y-4">
+                                  {goal.type === 'numeric' && (
+                                    <div className="space-y-3">
+                                      <label className="block text-sm font-medium text-gray-700">Valor Atual:</label>
+                                      <input type="number" className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder={`Meta: ${goal.targetValue}`} min="0" value={individualGoalData[goal.$id!] || ''} onChange={(e) => updateIndividualGoalData(goal.$id!, parseFloat(e.target.value) || 0)} />
+                                    </div>
+                                  )}
+                                  {goal.type === 'percentage' && (
+                                    <div className="space-y-3">
+                                      <label className="block text-sm font-medium text-gray-700">Porcentagem Atual (%):</label>
+                                      <input type="number" className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder={`Meta: ${goal.targetValue}%`} min="0" max="100" value={individualGoalData[goal.$id!] || ''} onChange={(e) => updateIndividualGoalData(goal.$id!, parseFloat(e.target.value) || 0)} />
+                                    </div>
+                                  )}
+                                  {goal.type === 'task_completion' && (
+                                    <div className="space-y-3">
+                                      <label className="flex items-center space-x-2">
+                                        <input type="checkbox" className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" checked={individualGoalData[goal.$id!] || false} onChange={(e) => updateIndividualGoalData(goal.$id!, e.target.checked)} />
+                                        <span className="text-sm text-gray-700">Tarefa concluída</span>
+                                      </label>
+                                    </div>
+                                  )}
+                                  <div className="pt-3 border-t border-gray-200">
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Comprovação desta meta:</label>
+                                    <input type="file" accept="image/*,.pdf,.doc,.docx" className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 file:mr-4 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-sm file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" onChange={(e) => { const file = e.target.files?.[0]; if (file) updateGoalFile(goal.$id!, file); }} />
+                                    <p className="text-xs text-gray-500 mt-1">Formatos aceitos: Imagens, PDF, DOC, DOCX</p>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (goalsByType.individualGoals.length > 0) ? (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-6 text-center">
+                        <div className="text-green-600 mb-3">
+                          <svg className="w-12 h-12 mx-auto" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                        </div>
+                        <h3 className="text-lg font-semibold text-green-800 mb-2">🎉 Todas as Metas Concluídas!</h3>
+                        <p className="text-sm text-green-700">Parabéns! Você completou todas as metas individuais. Continue assim!</p>
+                      </div>
+                    ) : null}
+                    {/* Checklist com Progresso Parcial */}
+                    {checklistItemsWithProgress.length > 0 ? (
+                      <div className="space-y-4">
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                          <h3 className="text-lg font-semibold text-blue-800 mb-2">📋 Itens Pendentes - Progresso Parcial</h3>
+                          <p className="text-sm text-blue-700">Mostrando apenas os itens que ainda não foram completados. Você pode salvar o progresso a qualquer momento.</p>
+                        </div>
+                        {checklistItemsWithProgress.map(item => (
+                          <Card key={item.id} className="border border-blue-200 bg-blue-50">
+                            <CardContent className="pt-4">
+                              <div className="flex items-center space-x-3">
+                                <input type="checkbox" className="w-5 h-5 text-blue-600 border-blue-300 rounded focus:ring-blue-500" checked={checklistData[item.id] || false} onChange={(e) => updateChecklistData(item.id, e.target.checked)} />
+                                <div className="flex-1">
+                                  <Label className="text-sm font-medium text-blue-800 cursor-pointer">{item.label}</Label>
+                                  {item.goalTitle && (<p className="text-xs text-blue-600 mt-1">Meta: {item.goalTitle}</p>)}
+                                </div>
+                                {checklistData[item.id] && (
+                                  <div className="text-green-600">
+                                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                                  </div>
+                                )}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    ) : (goalsByType.checklistGoals.length > 0) ? (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-6 text-center">
+                        <div className="text-green-600 mb-3">
+                          <svg className="w-12 h-12 mx-auto" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                        </div>
+                        <h3 className="text-lg font-semibold text-green-800 mb-2">🎉 Todos os Itens Concluídos!</h3>
+                        <p className="text-sm text-green-700">Parabéns! Você completou todos os itens dos checklists. Continue assim!</p>
+                      </div>
+                    ) : null}
+                    {/* Observações e Envio */}
+                    {(individualGoalsWithProgress.length > 0 || checklistItemsWithProgress.length > 0) && (
+                      <Card className="border border-gray-200 bg-gray-50">
+                        <CardHeader>
+                          <CardTitle className="text-lg font-semibold text-gray-800">Finalizar Envio</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Observações Gerais (opcional):</label>
+                            <textarea className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" rows={3} placeholder="Adicione observações gerais sobre todas as metas do dia..." value={generalObservation} onChange={(e) => setGeneralObservation(e.target.value)} />
+                            <p className="text-xs text-gray-500 mt-1">Use este campo para comentários que se aplicam a todas as metas</p>
+                          </div>
+                          <Button className="w-full" disabled={submitLoading || (checklistItemsWithProgress.length === 0 && individualGoalsWithProgress.length === 0)} onClick={handleSubmit}>
+                            {submitLoading ? 'Salvando...' : 'Salvar Progresso'}
+                          </Button>
+                          {submitError && (
+                            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                              <p className="text-red-800 text-sm">{submitError}</p>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <Target className="w-12 h-12 mx-auto mb-3 text-green-500" />
+                    <h3 className="text-lg font-medium text-gray-700 mb-2">Parabéns! Metas do dia concluídas</h3>
+                    <p className="text-sm">Você já enviou seu checklist hoje. Volte amanhã para novas metas!</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
             
