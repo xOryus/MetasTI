@@ -11,6 +11,7 @@ import { useAllProfiles } from '@/hooks/useAllProfiles';
 import ChecklistManager from "./ChecklistManager";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { formatCurrency, parseCurrencyInput, isValidCurrencyValue, reaisToCentavos, centavosToReais } from '@/lib/currency';
+import { ChevronRight, Target, CheckSquare, Percent, List } from "lucide-react";
 
 // Objetos para renderização dos nomes legíveis
 export const sectorDisplayNames: Record<Sector, string> = {
@@ -197,7 +198,7 @@ export function GoalForm({ formData, handleInputChange, isEdit = false, onStepCh
           <RadioGroup
             value={formData.type}
             onValueChange={(value) => handleInputChange('type', value)}
-            className="grid grid-cols-1 gap-4 md:grid-cols-2"
+            className="grid grid-cols-2 lg:grid-cols-4 gap-4"
           >
             {Object.entries(goalTypeDisplayNames).map(([key, name]) => (
               <div key={key} className="flex items-center">
@@ -207,20 +208,32 @@ export function GoalForm({ formData, handleInputChange, isEdit = false, onStepCh
                   className="w-full cursor-pointer"
                 >
                   <Card 
-                    className={`border-2 h-full min-h-[120px] transition-all duration-200 hover:shadow-md ${
+                    className={`border-2 h-full min-h-[120px] transition-all duration-300 hover:shadow-lg hover:scale-105 ${
                       formData.type === key 
-                        ? "border-primary shadow-lg ring-2 ring-primary/20" 
-                        : "border-muted hover:border-primary/50"
+                        ? key === GoalType.NUMERIC 
+                          ? "border-blue-500 shadow-lg ring-2 ring-blue-200 bg-blue-50" 
+                          : key === GoalType.PERCENTAGE
+                          ? "border-green-500 shadow-lg ring-2 ring-green-200 bg-green-50"
+                          : key === GoalType.BOOLEAN_CHECKLIST
+                          ? "border-purple-500 shadow-lg ring-2 ring-purple-200 bg-purple-50"
+                          : "border-orange-500 shadow-lg ring-2 ring-orange-200 bg-orange-50"
+                        : "border-gray-200 hover:border-blue-300 hover:bg-blue-25 hover:shadow-md"
                     }`}
                   >
-                    <CardContent className="flex flex-col items-center justify-center p-6 h-full">
-                      <div className="text-center">
+                    <CardContent className="flex flex-col items-center justify-center p-4 h-full">
+                      <div className="text-center space-y-2">
+                        <div className="flex justify-center mb-2">
+                          {key === GoalType.NUMERIC && <Target className="h-6 w-6 text-blue-600" />}
+                          {key === GoalType.PERCENTAGE && <Percent className="h-6 w-6 text-green-600" />}
+                          {key === GoalType.BOOLEAN_CHECKLIST && <List className="h-6 w-6 text-purple-600" />}
+                          {key === GoalType.TASK_COMPLETION && <CheckSquare className="h-6 w-6 text-orange-600" />}
+                        </div>
                         <div className="space-y-1">
-                          <p className="text-base font-medium leading-tight">{name}</p>
-                          <p className="text-sm text-muted-foreground leading-tight">
+                          <p className="text-sm font-medium leading-tight text-gray-900">{name}</p>
+                          <p className="text-xs text-gray-600 leading-tight">
                             {key === GoalType.NUMERIC && "Meta baseada em valores numéricos"}
                             {key === GoalType.PERCENTAGE && "Meta baseada em porcentagem"}
-                            {key === GoalType.BOOLEAN_CHECKLIST && "Meta com multiplos itens para verificação"}
+                            {key === GoalType.BOOLEAN_CHECKLIST && "Meta com múltiplos itens para verificação"}
                             {key === GoalType.TASK_COMPLETION && "Meta de conclusão simples (sim/não)"}
                           </p>
                         </div>
@@ -231,22 +244,19 @@ export function GoalForm({ formData, handleInputChange, isEdit = false, onStepCh
               </div>
             ))}
           </RadioGroup>
-          
-          {/* Botão Próximo */}
-          <div className="flex justify-end pt-4">
-            <Button 
-              type="button" 
-              onClick={handleTypeNext}
-              disabled={!formData.type}
-              className="min-w-[100px]"
-            >
-              Próximo →
-            </Button>
-          </div>
+
+          {formData.type && (
+            <div className="flex justify-center">
+              <Button onClick={handleTypeNext} className="bg-primary hover:bg-primary/90">
+                Continuar para Detalhes
+                <ChevronRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Etapa 2: Detalhes da meta */}
+      {/* Etapa 2: Detalhes da meta - Layout Horizontal */}
       {step === "details" && (
         <div className="space-y-6">
           <div className="flex items-center justify-between">
@@ -269,268 +279,297 @@ export function GoalForm({ formData, handleInputChange, isEdit = false, onStepCh
             </Button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="title">Título *</Label>
-              <Input
-                id="title"
-                value={formData.title}
-                onChange={(e) => handleInputChange('title', e.target.value)}
-                placeholder="Ex: Aumentar produtividade"
-              />
-            </div>
+          {/* Layout Horizontal - Duas Colunas */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             
-            <div className="space-y-2">
-              <Label htmlFor="scope">Escopo da Meta *</Label>
-              <Select 
-                value={formData.scope || ''} 
-                onValueChange={(value) => handleInputChange('scope', value)}
-              >
-                <SelectTrigger id="scope">
-                  <SelectValue placeholder="Selecione o escopo" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(goalScopeDisplayNames).map(([key, name]) => (
-                    <SelectItem key={key} value={key}>{name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="sectorId">Setor *</Label>
-              <Select value={formData.sectorId} onValueChange={(value) => handleInputChange('sectorId', value)}>
-                <SelectTrigger id="sectorId">
-                  <SelectValue placeholder="Selecione o setor" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(sectorDisplayNames).map(([key, name]) => (
-                    <SelectItem key={key} value={key}>{name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Campos específicos para metas numéricas */}
-          {formData.type === GoalType.NUMERIC && (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="targetValue">Valor Alvo *</Label>
-                <Input
-                  id="targetValue"
-                  type="number"
-                  value={formData.targetValue}
-                  onChange={(e) => handleInputChange('targetValue', e.target.value)}
-                  placeholder="100"
-                  min="0"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="numericDescription">Descrição da Meta * (máx. 100 caracteres)</Label>
-                <Input
-                  id="numericDescription"
-                  value={formData.description}
-                  onChange={(e) => handleInputChange('description', e.target.value.slice(0, 100))}
-                  placeholder="Ex: vendas realizadas por mês, peças produzidas por dia"
-                  maxLength={100}
-                />
-                <p className="text-sm text-muted-foreground">
-                  {formData.description.length}/100 caracteres - Descreva o que será medido
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Campos específicos para metas de porcentagem */}
-          {formData.type === GoalType.PERCENTAGE && (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="targetValuePercentage">Porcentagem Alvo (%) *</Label>
-                <Input
-                  id="targetValuePercentage"
-                  type="number"
-                  value={formData.targetValue}
-                  onChange={(e) => handleInputChange('targetValue', e.target.value)}
-                  placeholder="85"
-                  min="0"
-                  max="100"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="percentageDescription">Descrição (máx. 100 caracteres)</Label>
-                <Input
-                  id="percentageDescription"
-                  value={formData.description}
-                  onChange={(e) => handleInputChange('description', e.target.value.slice(0, 100))}
-                  placeholder="Ex: % de satisfação do cliente, % de conclusão de tarefas"
-                  maxLength={100}
-                />
-                <p className="text-sm text-muted-foreground">
-                  {formData.description.length}/100 caracteres - Opcional: o que a porcentagem representa
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Campo para Lista de Verificação com adição dinâmica de itens */}
-          {formData.type === GoalType.BOOLEAN_CHECKLIST && (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="descriptionChecklist">Descrição do Checklist * (máx. 100 caracteres)</Label>
-                <Input
-                  id="descriptionChecklist"
-                  value={formData.description}
-                  onChange={(e) => handleInputChange('description', e.target.value.slice(0, 100))}
-                  placeholder="Ex: Checklist de segurança da planta"
-                  className="text-sm"
-                  maxLength={100}
-                />
-                <p className="text-sm text-muted-foreground">
-                  {formData.description.length}/100 caracteres - Descreva o propósito deste checklist
-                </p>
-              </div>
-              
-              <div className="border rounded-md p-4">
-                <ChecklistManager
-                  items={convertedChecklistItems}
-                  onChange={handleChecklistItemsChange}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Campo para Conclusão de Tarefa */}
-          {formData.type === GoalType.TASK_COMPLETION && (
-            <div className="space-y-2">
-              <Label htmlFor="taskDescription">Descrição da Tarefa * (máx. 100 caracteres)</Label>
-              <Input
-                id="taskDescription"
-                value={formData.description}
-                onChange={(e) => handleInputChange('description', e.target.value.slice(0, 100))}
-                placeholder="Ex: Relatório mensal de vendas"
-                className="text-sm"
-                maxLength={100}
-              />
-              <p className="text-sm text-muted-foreground">
-                {formData.description.length}/100 caracteres - Descreva brevemente esta tarefa
-              </p>
-            </div>
-          )}
-
-          {/* Período e Status */}
-          <div className="grid grid-cols-1 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="period">Período *</Label>
-              <Select value={formData.period} onValueChange={(value) => handleInputChange('period', value)}>
-                <SelectTrigger id="period">
-                  <SelectValue placeholder="Período" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(goalPeriodDisplayNames).map(([key, name]) => (
-                    <SelectItem key={key} value={key}>{name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {formData.scope === GoalScope.INDIVIDUAL && (
-              <div className="space-y-2">
-                <Label htmlFor="assignedUserId">Usuário Atribuído *</Label>
-                <UserSelect 
-                  sectorId={formData.sectorId} 
-                  value={formData.assignedUserId || ''}
-                  onValueChange={(value) => handleInputChange('assignedUserId', value)} 
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Seção de Recompensa Monetária */}
-          {formData.scope === GoalScope.INDIVIDUAL && (
-            <div className="space-y-4 border rounded-lg p-4 bg-green-50">
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="hasMonetaryReward"
-                  checked={formData.hasMonetaryReward}
-                  onCheckedChange={(checked) => handleInputChange('hasMonetaryReward', checked)}
-                />
-                <Label htmlFor="hasMonetaryReward" className="text-green-700 font-medium">
-                  💰 Adicionar recompensa monetária
-                </Label>
-              </div>
-              
-              {formData.hasMonetaryReward && (
-                <div className="space-y-4 mt-4 border-t pt-4">
+            {/* Coluna Esquerda - Informações Básicas */}
+            <div className="space-y-6">
+              <div className="space-y-4">
+                <h4 className="font-medium text-gray-900 border-b pb-2">Informações Básicas</h4>
+                
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="title">Título *</Label>
+                    <Input
+                      id="title"
+                      value={formData.title}
+                      onChange={(e) => handleInputChange('title', e.target.value)}
+                      placeholder="Ex: Aumentar produtividade"
+                    />
+                  </div>
+                  
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="monetaryValue">Valor da Recompensa *</Label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-sm text-muted-foreground">
-                          R$
-                        </span>
-                        <Input
-                          id="monetaryValue"
-                          type="text"
-                          value={formData.monetaryValue}
-                          onChange={(e) => {
-                            const value = e.target.value;
-                            // Permitir apenas números, vírgula e ponto
-                            const cleanValue = value.replace(/[^0-9.,]/g, '');
-                            
-                            // Validar e formatar o valor
-                            if (cleanValue === '' || isValidCurrencyValue(cleanValue)) {
-                              handleInputChange('monetaryValue', cleanValue);
-                            }
-                          }}
-                          placeholder="0,00"
-                          className="pl-8"
-                        />
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Exemplo: 500,00 ou 1.250,50
-                      </p>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="currency">Moeda</Label>
+                      <Label htmlFor="scope">Escopo da Meta *</Label>
                       <Select 
-                        value={formData.currency} 
-                        onValueChange={(value) => handleInputChange('currency', value)}
+                        value={formData.scope || ''} 
+                        onValueChange={(value) => handleInputChange('scope', value)}
                       >
-                        <SelectTrigger id="currency">
-                          <SelectValue placeholder="Selecione a moeda" />
+                        <SelectTrigger id="scope">
+                          <SelectValue placeholder="Selecione o escopo" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="BRL">BRL - Real Brasileiro</SelectItem>
-                          <SelectItem value="USD">USD - Dólar Americano</SelectItem>
-                          <SelectItem value="EUR">EUR - Euro</SelectItem>
+                          {Object.entries(goalScopeDisplayNames).map(([key, name]) => (
+                            <SelectItem key={key} value={key}>{name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="sectorId">Setor *</Label>
+                      <Select value={formData.sectorId} onValueChange={(value) => handleInputChange('sectorId', value)}>
+                        <SelectTrigger id="sectorId">
+                          <SelectValue placeholder="Selecione o setor" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(sectorDisplayNames).map(([key, name]) => (
+                            <SelectItem key={key} value={key}>{name}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
                   </div>
-                  
-                  {formData.monetaryValue && (
-                    <div className="bg-green-100 border border-green-200 rounded-md p-3">
-                      <p className="text-sm text-green-700">
-                        <strong>Valor formatado:</strong> {formatCurrency(parseCurrencyInput(formData.monetaryValue))}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="period">Período *</Label>
+                      <Select value={formData.period} onValueChange={(value) => handleInputChange('period', value)}>
+                        <SelectTrigger id="period">
+                          <SelectValue placeholder="Período" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(goalPeriodDisplayNames).map(([key, name]) => (
+                            <SelectItem key={key} value={key}>{name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {formData.scope === GoalScope.INDIVIDUAL && (
+                      <div className="space-y-2">
+                        <Label htmlFor="assignedUserId">Usuário Atribuído *</Label>
+                        <UserSelect 
+                          sectorId={formData.sectorId} 
+                          value={formData.assignedUserId || ''}
+                          onValueChange={(value) => handleInputChange('assignedUserId', value)} 
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Campos específicos por tipo */}
+              <div className="space-y-4">
+                <h4 className="font-medium text-gray-900 border-b pb-2">Configuração da Meta</h4>
+                
+                {/* Campos específicos para metas numéricas */}
+                {formData.type === GoalType.NUMERIC && (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="targetValue">Valor Alvo *</Label>
+                      <Input
+                        id="targetValue"
+                        type="number"
+                        value={formData.targetValue}
+                        onChange={(e) => handleInputChange('targetValue', e.target.value)}
+                        placeholder="100"
+                        min="0"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="numericDescription">Descrição da Meta * (máx. 100 caracteres)</Label>
+                      <Input
+                        id="numericDescription"
+                        value={formData.description}
+                        onChange={(e) => handleInputChange('description', e.target.value.slice(0, 100))}
+                        placeholder="Ex: vendas realizadas por mês, peças produzidas por dia"
+                        maxLength={100}
+                      />
+                      <p className="text-sm text-muted-foreground">
+                        {formData.description.length}/100 caracteres - Descreva o que será medido
                       </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Campos específicos para metas de porcentagem */}
+                {formData.type === GoalType.PERCENTAGE && (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="targetValuePercentage">Porcentagem Alvo (%) *</Label>
+                      <Input
+                        id="targetValuePercentage"
+                        type="number"
+                        value={formData.targetValue}
+                        onChange={(e) => handleInputChange('targetValue', e.target.value)}
+                        placeholder="85"
+                        min="0"
+                        max="100"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="percentageDescription">Descrição (máx. 100 caracteres)</Label>
+                      <Input
+                        id="percentageDescription"
+                        value={formData.description}
+                        onChange={(e) => handleInputChange('description', e.target.value.slice(0, 100))}
+                        placeholder="Ex: % de satisfação do cliente, % de conclusão de tarefas"
+                        maxLength={100}
+                      />
+                      <p className="text-sm text-muted-foreground">
+                        {formData.description.length}/100 caracteres - Opcional: o que a porcentagem representa
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Campo para Conclusão de Tarefa */}
+                {formData.type === GoalType.TASK_COMPLETION && (
+                  <div className="space-y-2">
+                    <Label htmlFor="taskDescription">Descrição da Tarefa * (máx. 100 caracteres)</Label>
+                    <Input
+                      id="taskDescription"
+                      value={formData.description}
+                      onChange={(e) => handleInputChange('description', e.target.value.slice(0, 100))}
+                      placeholder="Ex: Relatório mensal de vendas"
+                      maxLength={100}
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      {formData.description.length}/100 caracteres - Descreva brevemente esta tarefa
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Coluna Direita - Configurações Específicas */}
+            <div className="space-y-6">
+              
+              {/* Campo para Lista de Verificação */}
+              {formData.type === GoalType.BOOLEAN_CHECKLIST && (
+                <div className="space-y-4">
+                  <h4 className="font-medium text-gray-900 border-b pb-2">Lista de Verificação</h4>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="descriptionChecklist">Descrição do Checklist * (máx. 100 caracteres)</Label>
+                    <Input
+                      id="descriptionChecklist"
+                      value={formData.description}
+                      onChange={(e) => handleInputChange('description', e.target.value.slice(0, 100))}
+                      placeholder="Ex: Checklist de segurança da planta"
+                      maxLength={100}
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      {formData.description.length}/100 caracteres - Descreva o propósito deste checklist
+                    </p>
+                  </div>
+                  
+                  <div className="border rounded-md p-4 bg-gray-50">
+                    <ChecklistManager
+                      items={convertedChecklistItems}
+                      onChange={handleChecklistItemsChange}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Seção de Recompensa Monetária */}
+              {formData.scope === GoalScope.INDIVIDUAL && (
+                <div className="space-y-4 border rounded-lg p-4 bg-green-50">
+                  <h4 className="font-medium text-green-900 border-b border-green-200 pb-2">💰 Recompensa Monetária</h4>
+                  
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="hasMonetaryReward"
+                      checked={formData.hasMonetaryReward}
+                      onCheckedChange={(checked) => handleInputChange('hasMonetaryReward', checked)}
+                    />
+                    <Label htmlFor="hasMonetaryReward" className="text-green-700 font-medium">
+                      Adicionar recompensa monetária
+                    </Label>
+                  </div>
+                  
+                  {formData.hasMonetaryReward && (
+                    <div className="space-y-4 mt-4 border-t border-green-200 pt-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="monetaryValue">Valor da Recompensa *</Label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-sm text-muted-foreground">
+                              R$
+                            </span>
+                            <Input
+                              id="monetaryValue"
+                              type="text"
+                              value={formData.monetaryValue}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                const cleanValue = value.replace(/[^0-9.,]/g, '');
+                                if (cleanValue === '' || isValidCurrencyValue(cleanValue)) {
+                                  handleInputChange('monetaryValue', cleanValue);
+                                }
+                              }}
+                              placeholder="0,00"
+                              className="pl-8"
+                            />
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Exemplo: 500,00 ou 1.250,50
+                          </p>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="currency">Moeda</Label>
+                          <Select 
+                            value={formData.currency} 
+                            onValueChange={(value) => handleInputChange('currency', value)}
+                          >
+                            <SelectTrigger id="currency">
+                              <SelectValue placeholder="Selecione a moeda" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="BRL">BRL - Real Brasileiro</SelectItem>
+                              <SelectItem value="USD">USD - Dólar Americano</SelectItem>
+                              <SelectItem value="EUR">EUR - Euro</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      
+                      {formData.monetaryValue && (
+                        <div className="bg-green-100 border border-green-200 rounded-md p-3">
+                          <p className="text-sm text-green-700">
+                            <strong>Valor formatado:</strong> {formatCurrency(parseCurrencyInput(formData.monetaryValue))}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
               )}
-            </div>
-          )}
 
-          <div className="flex items-center space-x-2">
-            <Switch
-              id="isActive"
-              checked={formData.isActive}
-              onCheckedChange={(checked) => handleInputChange('isActive', checked)}
-            />
-            <Label htmlFor="isActive">Meta ativa</Label>
+              {/* Status da Meta */}
+              <div className="space-y-4 border rounded-lg p-4 bg-blue-50">
+                <h4 className="font-medium text-blue-900 border-b border-blue-200 pb-2">⚙️ Status da Meta</h4>
+                
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="isActive"
+                    checked={formData.isActive}
+                    onCheckedChange={(checked) => handleInputChange('isActive', checked)}
+                  />
+                  <Label htmlFor="isActive" className="text-blue-700 font-medium">Meta ativa</Label>
+                </div>
+                
+                <p className="text-sm text-blue-600">
+                  Metas ativas ficam disponíveis para os colaboradores
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       )}

@@ -431,8 +431,22 @@ export default function CollaboratorHome() {
       
       // Usar o primeiro arquivo encontrado (podemos melhorar isso depois para múltiplos arquivos)
       const firstFile = Object.values(goalFiles)[0];
-      if (!firstFile) {
+      
+      // Verificar se há itens marcados no checklist
+      const hasChecklistItems = Object.values(checklistData).some(checked => checked);
+      
+      // Verificar se há metas individuais com dados
+      const hasIndividualGoals = Object.keys(individualGoalData).length > 0;
+      
+      // Se há itens marcados ou metas individuais, verificar se há arquivos
+      if ((hasChecklistItems || hasIndividualGoals) && Object.keys(goalFiles).length === 0) {
         setSubmitError('Por favor, anexe pelo menos um arquivo de comprovação.');
+        return;
+      }
+      
+      // Se não há itens para enviar
+      if (!hasChecklistItems && !hasIndividualGoals) {
+        setSubmitError('Nenhum item selecionado para envio.');
         return;
       }
       
@@ -751,29 +765,90 @@ export default function CollaboratorHome() {
                     ) : null}
                     {/* Checklist com Progresso Parcial */}
                     {checklistItemsWithProgress.length > 0 ? (
-                      <div className="space-y-4">
+                      <div className="space-y-6">
                         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                           <h3 className="text-lg font-semibold text-blue-800 mb-2">📋 Itens Pendentes - Progresso Parcial</h3>
                           <p className="text-sm text-blue-700">Mostrando apenas os itens que ainda não foram completados. Você pode salvar o progresso a qualquer momento.</p>
                         </div>
-                        {checklistItemsWithProgress.map(item => (
-                          <Card key={item.id} className="border border-blue-200 bg-blue-50">
-                            <CardContent className="pt-4">
-                              <div className="flex items-center space-x-3">
-                                <input type="checkbox" className="w-5 h-5 text-blue-600 border-blue-300 rounded focus:ring-blue-500" checked={checklistData[item.id] || false} onChange={(e) => updateChecklistData(item.id, e.target.checked)} />
-                                <div className="flex-1">
-                                  <Label className="text-sm font-medium text-blue-800 cursor-pointer">{item.label}</Label>
-                                  {item.goalTitle && (<p className="text-xs text-blue-600 mt-1">Meta: {item.goalTitle}</p>)}
-                                </div>
-                                {checklistData[item.id] && (
-                                  <div className="text-green-600">
-                                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                        
+                        {/* Agrupar itens por meta */}
+                        {(() => {
+                          const groupedItems = checklistItemsWithProgress.reduce((groups: any, item: any) => {
+                            const goalId = item.goalId;
+                            if (!groups[goalId]) {
+                              groups[goalId] = {
+                                goalTitle: item.goalTitle,
+                                goalDescription: item.goalDescription,
+                                items: []
+                              };
+                            }
+                            groups[goalId].items.push(item);
+                            return groups;
+                          }, {});
+
+                          return Object.entries(groupedItems).map(([goalId, group]: [string, any]) => (
+                            <Card key={goalId} className="border border-blue-200 bg-white shadow-sm">
+                              <CardHeader className="pb-3">
+                                <div className="flex items-start gap-3">
+                                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                    <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm3 2a1 1 0 000 2h6a1 1 0 100-2H7zm0 4a1 1 0 000 2h6a1 1 0 100-2H7zm0 4a1 1 0 000 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+                                    </svg>
                                   </div>
-                                )}
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
+                                  <div className="flex-1">
+                                    <CardTitle className="text-lg font-semibold text-gray-900">{group.goalTitle}</CardTitle>
+                                    {group.goalDescription && (
+                                      <p className="text-sm text-gray-600 mt-1">{group.goalDescription}</p>
+                                    )}
+                                  </div>
+                                </div>
+                              </CardHeader>
+                              <CardContent className="pt-0">
+                                <div className="space-y-3">
+                                  {group.items.map((item: any) => (
+                                    <div key={item.id} className="space-y-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                                      <div className="flex items-center space-x-3">
+                                        <input 
+                                          type="checkbox" 
+                                          className="w-5 h-5 text-blue-600 border-blue-300 rounded focus:ring-blue-500" 
+                                          checked={checklistData[item.id] || false} 
+                                          onChange={(e) => updateChecklistData(item.id, e.target.checked)} 
+                                        />
+                                        <div className="flex-1">
+                                          <Label className="text-sm font-medium text-blue-800 cursor-pointer">{item.label}</Label>
+                                        </div>
+                                        {checklistData[item.id] && (
+                                          <div className="text-green-600">
+                                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                            </svg>
+                                          </div>
+                                        )}
+                                      </div>
+                                      
+                                      {/* Campo de arquivo para este item */}
+                                      {checklistData[item.id] && (
+                                        <div className="ml-8 space-y-2">
+                                          <label className="block text-sm font-medium text-blue-700">Comprovação para "{item.label}":</label>
+                                          <input 
+                                            type="file" 
+                                            accept="image/*,.pdf,.doc,.docx" 
+                                            className="w-full px-3 py-2 text-sm border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 file:mr-4 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-sm file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" 
+                                            onChange={(e) => { 
+                                              const file = e.target.files?.[0]; 
+                                              if (file) updateGoalFile(item.id, file); 
+                                            }} 
+                                          />
+                                          <p className="text-xs text-blue-600">Formatos aceitos: Imagens, PDF, DOC, DOCX</p>
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ));
+                        })()}
                       </div>
                     ) : (goalsByType.checklistGoals.length > 0) ? (
                       <div className="bg-green-50 border border-green-200 rounded-lg p-6 text-center">

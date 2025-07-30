@@ -807,12 +807,21 @@ export default function ManagerDashboard() {
         const isCompleted = value === true || value === 'true';
         const status = isCompleted ? '✅' : '❌';
         
-        // Melhor formatação do nome da meta
+        // Buscar o título real da meta no banco de dados
         let goalName = key;
+        let goalType = 'Meta Individual';
         
-        // Se for um ID de meta (formato UUID), usar nome genérico
-        if (key.length > 20 && key.includes('-')) {
-          goalName = 'Meta Individual';
+        // Se for um ID de meta (formato UUID ou ObjectId), buscar no sectorGoals
+        if (key.length >= 20) {
+          const goal = sectorGoals?.find(g => g.$id === key);
+          
+          if (goal) {
+            goalName = goal.title;
+            goalType = goal.scope === 'individual' ? 'Meta Individual' : 'Meta Setorial';
+          } else {
+            goalName = 'Meta não encontrada';
+            goalType = 'Meta Individual';
+          }
         } else {
           // Limpar e formatar nomes de checklist
           goalName = key
@@ -824,7 +833,7 @@ export default function ManagerDashboard() {
             .replace(/\b\w/g, l => l.toUpperCase()); // Capitaliza primeira letra de cada palavra
         }
         
-        return { status, goalName, isCompleted };
+        return { status, goalName, isCompleted, goalType };
       }).sort((a, b) => {
         // Ordena: concluídas primeiro, depois por nome
         if (a.isCompleted !== b.isCompleted) {
@@ -2048,7 +2057,7 @@ export default function ManagerDashboard() {
                                   <span className="text-2xl">{response.status}</span>
                                   <div>
                                     <p className="font-medium text-gray-900">{response.goalName}</p>
-                                    <p className="text-sm text-gray-600">Meta individual</p>
+                                    <p className="text-sm text-gray-600">{response.goalType}</p>
                                   </div>
                                 </div>
                                 <Badge 
