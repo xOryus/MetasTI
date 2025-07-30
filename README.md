@@ -354,16 +354,14 @@ Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para ma
 
 ## 📞 Suporte
 
-- 📧 **Email**: suporte@metasti.com
-- 📱 **Telegram**: @MetasTI_Support
-- 📖 **Documentação**: [docs.metasti.com](https://docs.metasti.com)
+- 📧 **Email**: ti@frigoias.com.br
+- 📖 **Documentação**: Em breve (Google Drive)
 
 ---
 
 <div align="center">
 
 **MetasTI** - Transformando metas em resultados! 🎯
-
-*Desenvolvido com ❤️ pela equipe MetasTI*
+*Desenvolvido por Gabriel H, sob proteção antiplágio.
 
 </div>
