@@ -120,6 +120,7 @@ export default function ManagerDashboard() {
   // Estados para detalhes de submissões
   const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
   const [isSubmissionModalOpen, setIsSubmissionModalOpen] = useState(false);
+  const [filteredSubmissions, setFilteredSubmissions] = useState<any[]>([]);
 
   // Estados para funcionalidades avançadas
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
@@ -801,37 +802,85 @@ export default function ManagerDashboard() {
       const responses = JSON.parse(checklistString);
       const entries = Object.entries(responses);
       
+
+      
       if (entries.length === 0) return 'Nenhuma resposta registrada';
       
-      return entries.map(([key, value]) => {
-        const isCompleted = value === true || value === 'true';
-        const status = isCompleted ? '✅' : '❌';
-        
-        // Buscar o título real da meta no banco de dados
+      // Agrupar itens de checklist por meta pai
+      const groupedResponses: any = {};
+      
+              entries.forEach(([key, value]) => {
+          // Verificar se é um item de checklist (formato: goalId-index)
+          if (key.includes('-') && key.length > 20) {
+            // Extrair o ID da meta pai (parte antes do hífen)
+            const goalId = key.split('-')[0];
+            
+            // Buscar a meta pai
+            const parentGoal = sectorGoals?.find(goal => goal.$id === goalId);
+            
+            if (parentGoal && parentGoal.type === 'boolean_checklist') {
+              // Agrupar sob a meta pai
+              if (!groupedResponses[parentGoal.$id!]) {
+                groupedResponses[parentGoal.$id!] = {
+                  goalTitle: parentGoal.title,
+                  goalDescription: parentGoal.description,
+                  items: {}
+                };
+              }
+              groupedResponses[parentGoal.$id!].items[key] = value;
+            } else {
+              // Se não encontrou a meta pai, manter como individual
+              groupedResponses[key] = value;
+            }
+          } else {
+            // Para outros tipos, manter como está
+            groupedResponses[key] = value;
+          }
+        });
+      
+      // Processar as respostas agrupadas
+      return Object.entries(groupedResponses).map(([key, value]) => {
         let goalName = key;
         let goalType = 'Meta Individual';
+        let isCompleted = false;
         
-        // Se for um ID de meta (formato UUID ou ObjectId), buscar no sectorGoals
-        if (key.length >= 20) {
-          const goal = sectorGoals?.find(g => g.$id === key);
-          
-          if (goal) {
-            goalName = goal.title;
-            goalType = goal.scope === 'individual' ? 'Meta Individual' : 'Meta Setorial';
-          } else {
-            goalName = 'Meta não encontrada';
-            goalType = 'Meta Individual';
-          }
+        // Se é uma meta agrupada (checklist)
+        if (typeof value === 'object' && value !== null && 'goalTitle' in value) {
+          goalName = (value as any).goalTitle;
+          goalType = 'Meta de Checklist';
+          // Verificar se pelo menos um item está completo
+          isCompleted = Object.values((value as any).items).some((itemValue: any) => 
+            itemValue === true || itemValue === 'true'
+          );
+
         } else {
-          // Limpar e formatar nomes de checklist
-          goalName = key
-            .replace(/^.*-/, '') // Remove prefixos com hífen
-            .replace(/_/g, ' ') // Substitui underscores por espaços
-            .replace(/([A-Z])/g, ' $1') // Adiciona espaço antes de maiúsculas
-            .trim()
-            .toLowerCase()
-            .replace(/\b\w/g, l => l.toUpperCase()); // Capitaliza primeira letra de cada palavra
+          // Para metas individuais
+          isCompleted = value === true || value === 'true';
+          
+          // Se for um ID de meta (formato UUID ou ObjectId), buscar no sectorGoals
+          if (key.length >= 20) {
+            const goal = sectorGoals?.find(g => g.$id === key);
+            
+            if (goal) {
+              goalName = goal.title;
+              goalType = goal.scope === 'individual' ? 'Meta Individual' : 'Meta Setorial';
+            } else {
+              goalName = 'Meta não encontrada';
+              goalType = 'Meta Individual';
+            }
+          } else {
+            // Limpar e formatar nomes de checklist
+            goalName = key
+              .replace(/^.*-/, '') // Remove prefixos com hífen
+              .replace(/_/g, ' ') // Substitui underscores por espaços
+              .replace(/([A-Z])/g, ' $1') // Adiciona espaço antes de maiúsculas
+              .trim()
+              .toLowerCase()
+              .replace(/\b\w/g, l => l.toUpperCase()); // Capitaliza primeira letra de cada palavra
+          }
         }
+        
+        const status = isCompleted ? '✅' : '❌';
         
         return { status, goalName, isCompleted, goalType };
       }).sort((a, b) => {
@@ -1325,6 +1374,14 @@ export default function ManagerDashboard() {
                         const collaborator = profiles.find(p => p.$id === ranking.id);
                         if (collaborator) {
                           setSelectedCollaborator(collaborator);
+                          
+                          // Filtrar apenas submissões do colaborador específico
+                          const collaboratorSubmissions = submissions.filter(sub => 
+                            sub.userProfile.$id === collaborator.$id || 
+                            sub.userProfile.userId === collaborator.userId
+                          );
+                          
+                          setFilteredSubmissions(collaboratorSubmissions);
                           setIsModalOpen(true);
                         }
                       }}
@@ -1783,8 +1840,7 @@ export default function ManagerDashboard() {
                   </CardHeader>
                   <CardContent className="p-6">
                     <div className="space-y-3 max-h-[400px] overflow-y-auto">
-                      {submissions
-                        .filter(s => s.userProfile.$id === selectedCollaborator.$id)
+                      {filteredSubmissions
                         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
                         .slice(0, 8)
                         .map((submission, index) => {
@@ -1838,7 +1894,7 @@ export default function ManagerDashboard() {
                           );
                         })}
                       
-                      {submissions.filter(s => s.userProfile.$id === selectedCollaborator.$id).length === 0 && (
+                      {filteredSubmissions.length === 0 && (
                         <div className="text-center py-8">
                           <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
                             <Activity className="w-6 h-6 text-gray-400" />
