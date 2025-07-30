@@ -182,8 +182,14 @@ export const isGoalAchievedInPeriod = (
         }
         
         if (currentValue > 0) {
-          totalCurrentValue += currentValue;
-          submissionsWithValue++;
+          // CORREÇÃO: Para metas numéricas, somar os valores (não fazer média)
+          if (goal.type === 'numeric') {
+            totalCurrentValue += currentValue;
+          } else {
+            // Para outros tipos, manter a lógica de média para compatibilidade
+            totalCurrentValue += currentValue;
+            submissionsWithValue++;
+          }
         }
       }
       
@@ -205,15 +211,21 @@ export const isGoalAchievedInPeriod = (
   const requiredRate = goal.period === GoalPeriod.DAILY ? 100 : 80;
   const achieved = completionRate >= requiredRate;
 
-  // Calcular valor médio atual para metas numéricas
-  const averageCurrentValue = submissionsWithValue > 0 ? totalCurrentValue / submissionsWithValue : 0;
+  // CORREÇÃO: Para metas numéricas, usar o valor total acumulado
+  // Para outros tipos, usar a média como antes
+  let finalCurrentValue = 0;
+  if (goal.type === 'numeric') {
+    finalCurrentValue = totalCurrentValue; // Valor total acumulado
+  } else {
+    finalCurrentValue = submissionsWithValue > 0 ? totalCurrentValue / submissionsWithValue : 0;
+  }
 
   return { 
     achieved, 
     completionRate, 
     daysAchieved, 
     totalDaysInPeriod,
-    currentValue: averageCurrentValue
+    currentValue: finalCurrentValue
   };
 };
 
@@ -265,7 +277,7 @@ export const calculateUserRewards = (
     // Para metas numéricas, calcular proporcionalmente ao progresso
     let earnedAmount = 0;
     if (goal.type === 'numeric' && currentValue && currentValue > 0) {
-      // Calcular proporção do progresso
+      // CORREÇÃO: Limitar o valor ganho ao máximo da meta
       const progressRatio = Math.min(currentValue / goal.targetValue, 1);
       earnedAmount = Math.round(goal.monetaryValue! * progressRatio);
     } else {

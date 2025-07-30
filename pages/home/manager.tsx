@@ -90,7 +90,14 @@ export default function ManagerDashboard() {
   } = useSubmissions();
 
   const { profiles, loading: profilesLoading } = useAllProfiles();
-  const { goals: sectorGoals, loading: goalsLoading } = useSectorGoals();
+  const { goals: sectorGoals, loading: goalsLoading, fetchActiveGoalsBySector } = useSectorGoals();
+
+  // Carregar metas do setor quando o componente montar
+  useEffect(() => {
+    if (profile && profile.sector) {
+      fetchActiveGoalsBySector(profile.sector);
+    }
+  }, [profile, fetchActiveGoalsBySector]);
 
   // Função helper para formatar mês em português
   const getMonthNameInPortuguese = (date: Date) => {
@@ -122,6 +129,133 @@ export default function ManagerDashboard() {
   // Estado para controlar minimização dos alertas
   const [isAlertsMinimized, setIsAlertsMinimized] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month'>('week');
+
+  // Função para calcular desempenho real baseado em metas atingidas
+  const calculateRealPerformance = (collaboratorId: string, goals: any[], submissions: any[]) => {
+    if (!goals || !submissions) return { completionRate: 0, isGoalAchieved: false };
+    
+    // Buscar metas individuais do colaborador
+    const userGoals = goals.filter(goal => 
+      goal.scope === 'individual' && 
+      goal.assignedUserId === collaboratorId &&
+      goal.isActive
+    );
+    
+    if (userGoals.length === 0) {
+      // Se não tem metas individuais, usar cálculo tradicional
+      const monthStart = startOfMonth(new Date());
+      const collabSubmissions = submissions.filter(s => 
+        s.userProfile.$id === collaboratorId && new Date(s.date) >= monthStart
+      );
+      const daysInMonth = new Date().getDate();
+      const completionRate = (collabSubmissions.length / daysInMonth) * 100;
+      return { completionRate: Math.round(completionRate), isGoalAchieved: false };
+    }
+    
+    // Calcular desempenho baseado em metas atingidas
+    let totalGoals = userGoals.length;
+    let achievedGoals = 0;
+    let totalProgress = 0;
+    
+    for (const goal of userGoals) {
+      // Buscar submissões do colaborador para esta meta
+      const goalSubmissions = submissions.filter(sub => {
+        try {
+          const checklist = JSON.parse(sub.checklist);
+          return checklist[goal.$id!] !== undefined;
+        } catch {
+          return false;
+        }
+      });
+      
+      if (goalSubmissions.length === 0) {
+        // Meta sem submissões
+        totalProgress += 0;
+        continue;
+      }
+      
+      // Calcular progresso da meta
+      let goalProgress = 0;
+      let isGoalAchieved = false;
+      
+      if (goal.type === 'numeric') {
+        // Para metas numéricas, somar valores acumulados
+        let totalValue = 0;
+        goalSubmissions.forEach(sub => {
+          try {
+            const checklist = JSON.parse(sub.checklist);
+            const goalData = checklist[goal.$id!];
+            if (goalData !== undefined && goalData !== null) {
+              totalValue += parseFloat(goalData) || 0;
+            }
+          } catch {
+            // Ignora erros de parsing
+          }
+        });
+        
+        goalProgress = Math.min((totalValue / goal.targetValue) * 100, 100);
+        isGoalAchieved = totalValue >= goal.targetValue;
+      } else if (goal.type === 'percentage') {
+        // Para metas de porcentagem, usar último valor
+        const lastSubmission = goalSubmissions[goalSubmissions.length - 1];
+        try {
+          const checklist = JSON.parse(lastSubmission.checklist);
+          const goalData = checklist[goal.$id!];
+          goalProgress = parseFloat(goalData) || 0;
+          isGoalAchieved = goalProgress >= goal.targetValue;
+        } catch {
+          goalProgress = 0;
+        }
+      } else if (goal.type === 'task_completion') {
+        // Para tarefas, verificar se foi completada
+        const lastSubmission = goalSubmissions[goalSubmissions.length - 1];
+        try {
+          const checklist = JSON.parse(lastSubmission.checklist);
+          const goalData = checklist[goal.$id!];
+          goalProgress = Boolean(goalData) ? 100 : 0;
+          isGoalAchieved = Boolean(goalData);
+        } catch {
+          goalProgress = 0;
+        }
+      } else if (goal.type === 'boolean_checklist') {
+        // Para checklists, calcular porcentagem de itens completados
+        const lastSubmission = goalSubmissions[goalSubmissions.length - 1];
+        try {
+          const checklist = JSON.parse(lastSubmission.checklist);
+          const goalData = checklist[goal.$id!];
+          
+          if (Array.isArray(goalData)) {
+            const completedItems = goalData.filter(Boolean).length;
+            goalProgress = (completedItems / goalData.length) * 100;
+            isGoalAchieved = completedItems === goalData.length;
+          } else if (typeof goalData === 'object') {
+            const completedItems = Object.values(goalData).filter(Boolean).length;
+            const totalItems = Object.keys(goalData).length;
+            goalProgress = totalItems > 0 ? (completedItems / totalItems) * 100 : 0;
+            isGoalAchieved = completedItems === totalItems;
+          }
+        } catch {
+          goalProgress = 0;
+        }
+      }
+      
+      totalProgress += goalProgress;
+      if (isGoalAchieved) {
+        achievedGoals++;
+      }
+    }
+    
+    // Calcular taxa de conclusão final
+    const averageProgress = totalGoals > 0 ? totalProgress / totalGoals : 0;
+    
+    // Se pelo menos uma meta foi atingida, garantir mínimo de 100%
+    const finalCompletionRate = achievedGoals > 0 ? Math.max(averageProgress, 100) : averageProgress;
+    
+    return { 
+      completionRate: Math.round(finalCompletionRate), 
+      isGoalAchieved: achievedGoals > 0 
+    };
+  };
 
   // Cálculo das métricas principais do dashboard
   const calculateDashboardMetrics = (): DashboardMetrics => {
@@ -167,9 +301,18 @@ export default function ManagerDashboard() {
              sectorCollaborators.some(collab => collab.$id === s.userProfile.$id);
     });
 
-    // Taxa de conclusão (submissões vs esperado)
-    const expectedSubmissions = sectorCollaborators.length * daysInMonth;
-    const taxaConclusao = expectedSubmissions > 0 ? (sectorSubmissions.length / expectedSubmissions) * 100 : 0;
+
+
+    // Taxa de conclusão (submissões vs esperado) - CORREÇÃO: Usar lógica baseada em metas
+    // Calcular taxa de conclusão baseada em metas atingidas
+    let totalCompletionRate = 0;
+    
+    for (const collaborator of sectorCollaborators) {
+      const { completionRate, isGoalAchieved } = calculateRealPerformance(collaborator.$id, sectorGoals, submissions);
+      totalCompletionRate += completionRate;
+    }
+    
+    const taxaConclusao = sectorCollaborators.length > 0 ? totalCompletionRate / sectorCollaborators.length : 0;
 
     // Usuários ativos (colaboradores do setor)
     const usuariosAtivos = sectorCollaborators.length;
@@ -245,16 +388,96 @@ export default function ManagerDashboard() {
       let totalEarnedToday = 0;
       let collaboratorsWithRewards = 0;
 
-      // Calcular recompensas para cada colaborador do setor
-      for (const collaborator of sectorCollaborators) {
-        const userRewards = calculateUserRewards(sectorGoals, submissions, collaborator.userId);
-        
-        if (userRewards.totalPendingRewards > 0 || userRewards.totalEarnedThisMonth > 0) {
+      // NOVA LÓGICA SIMPLIFICADA: Verificar cada meta individual
+      for (const goal of sectorGoals) {
+        // Só considerar metas individuais com recompensa monetária
+        if (goal.scope !== 'individual' || !goal.hasMonetaryReward || !goal.monetaryValue || goal.monetaryValue <= 0) {
+          continue;
+        }
+
+        // Buscar colaborador da meta
+        const collaborator = sectorCollaborators.find(c => 
+          c.$id === goal.assignedUserId || c.userId === goal.assignedUserId
+        );
+        if (!collaborator) {
+          continue;
+        }
+
+        // Buscar todas as submissões do colaborador para esta meta
+        const goalSubmissions = submissions.filter(sub => {
+          try {
+            const checklist = JSON.parse(sub.checklist);
+            return checklist[goal.$id!] !== undefined;
+          } catch {
+            return false;
+          }
+        });
+
+        if (goalSubmissions.length === 0) {
+          continue; // Meta sem submissões
+        }
+
+        // Calcular se a meta foi atingida
+        let isGoalAchieved = false;
+        let totalValue = 0;
+
+        if (goal.type === 'numeric') {
+          // Para metas numéricas: somar todos os valores
+          goalSubmissions.forEach(sub => {
+            try {
+              const checklist = JSON.parse(sub.checklist);
+              const goalData = checklist[goal.$id!];
+              if (goalData !== undefined && goalData !== null) {
+                totalValue += parseFloat(goalData) || 0;
+              }
+            } catch {
+              // Ignora erros
+            }
+          });
+          isGoalAchieved = totalValue >= goal.targetValue;
+        } else if (goal.type === 'percentage') {
+          // Para metas de porcentagem: usar último valor
+          const lastSubmission = goalSubmissions[goalSubmissions.length - 1];
+          try {
+            const checklist = JSON.parse(lastSubmission.checklist);
+            const goalData = checklist[goal.$id!];
+            totalValue = parseFloat(goalData) || 0;
+            isGoalAchieved = totalValue >= goal.targetValue;
+          } catch {
+            // Ignora erros
+          }
+        } else if (goal.type === 'task_completion') {
+          // Para tarefas: verificar se foi completada
+          const lastSubmission = goalSubmissions[goalSubmissions.length - 1];
+          try {
+            const checklist = JSON.parse(lastSubmission.checklist);
+            const goalData = checklist[goal.$id!];
+            isGoalAchieved = Boolean(goalData);
+          } catch {
+            // Ignora erros
+          }
+        } else if (goal.type === 'boolean_checklist') {
+          // Para checklists: verificar se todos os itens foram completados
+          const lastSubmission = goalSubmissions[goalSubmissions.length - 1];
+          try {
+            const checklist = JSON.parse(lastSubmission.checklist);
+            const goalData = checklist[goal.$id!];
+            
+            if (Array.isArray(goalData)) {
+              isGoalAchieved = goalData.every(Boolean);
+            } else if (typeof goalData === 'object') {
+              isGoalAchieved = Object.values(goalData).every(Boolean);
+            }
+          } catch {
+            // Ignora erros
+          }
+        }
+
+        // Se a meta foi atingida, adicionar ao total pendente
+        if (isGoalAchieved) {
+          totalPendingRewards += goal.monetaryValue;
+          totalEarnedThisMonth += goal.monetaryValue;
           collaboratorsWithRewards++;
-          totalPendingRewards += userRewards.totalPendingRewards;
-          totalEarnedThisMonth += userRewards.totalEarnedThisMonth;
-          totalEarnedThisWeek += userRewards.totalEarnedThisWeek;
-          totalEarnedToday += userRewards.totalEarnedToday;
         }
       }
 
@@ -442,15 +665,8 @@ export default function ManagerDashboard() {
     );
 
     const rankings = sectorCollaborators.map(collab => {
-      // Submissões do último mês
-      const monthStart = startOfMonth(new Date());
-      const collabSubmissions = submissions.filter(s => 
-        s.userProfile.$id === collab.$id && new Date(s.date) >= monthStart
-      );
-
-      // Taxa de conclusão do mês
-      const daysInMonth = new Date().getDate();
-      const completionRate = (collabSubmissions.length / daysInMonth) * 100;
+      // CORREÇÃO: Usar nova lógica de desempenho baseada em metas
+      const { completionRate, isGoalAchieved } = calculateRealPerformance(collab.$id, sectorGoals, submissions);
 
       // Calcular streak (dias consecutivos)
       let streak = 0;
@@ -484,18 +700,19 @@ export default function ManagerDashboard() {
         s.userProfile.$id === collab.$id && new Date(s.date) >= weekStart
       ).length;
 
-      // Status do colaborador
+      // Status do colaborador - CORREÇÃO: Considerar metas atingidas
       let status: 'active' | 'risk' | 'inactive' = 'active';
       if (!lastSubmission || new Date(lastSubmission.date) < subDays(new Date(), 3)) {
         status = 'inactive';
-      } else if (completionRate < 50) {
+      } else if (completionRate < 50 && !isGoalAchieved) {
+        // Só considerar risco se não atingiu nenhuma meta
         status = 'risk';
       }
 
       return {
         id: collab.$id,
         name: collab.name,
-        completionRate: Math.round(completionRate),
+        completionRate: completionRate,
         streak,
         lastSubmission: lastSubmissionDate,
         submissionsThisWeek,
@@ -657,26 +874,114 @@ export default function ManagerDashboard() {
 
   // Obter colaboradores com recompensas pendentes
   const getCollaboratorsWithRewards = () => {
-    if (!profile || !profiles || !sectorGoals) return [];
+    if (!profile || !profiles || !sectorGoals || !submissions) return [];
     
     const sectorCollaborators = profiles.filter(
       p => p.sector === profile.sector && p.role === Role.COLLABORATOR
     );
 
-    return sectorCollaborators.map(collaborator => {
-      const collaboratorRewards = calculateUserRewards(sectorGoals, submissions, collaborator.$id);
-      const totalEarned = collaboratorRewards.totalPendingRewards;
-      
-      return {
-        id: collaborator.$id,
-        name: collaborator.name,
-        totalEarned,
-        pendingRewards: totalEarned,
-        rewardsCount: collaboratorRewards.rewardsByPeriod.length,
-        lastEarned: collaboratorRewards.rewardsByPeriod.length > 0 ? 
-          format(new Date(collaboratorRewards.rewardsByPeriod[0].periodStart), 'dd/MM/yyyy') : 'N/A'
-      };
-    }).filter(collaborator => collaborator.totalEarned > 0)
+    const collaboratorsWithRewards = [];
+
+    // Usar a mesma lógica do calculateSectorMonetaryRewards
+    for (const goal of sectorGoals) {
+      // Só considerar metas individuais com recompensa monetária
+      if (goal.scope !== 'individual' || !goal.hasMonetaryReward || !goal.monetaryValue || goal.monetaryValue <= 0) {
+        continue;
+      }
+
+      // Buscar colaborador da meta
+      const collaborator = sectorCollaborators.find(c => 
+        c.$id === goal.assignedUserId || c.userId === goal.assignedUserId
+      );
+      if (!collaborator) {
+        continue;
+      }
+
+      // Buscar todas as submissões do colaborador para esta meta
+      const goalSubmissions = submissions.filter(sub => {
+        try {
+          const checklist = JSON.parse(sub.checklist);
+          return checklist[goal.$id!] !== undefined;
+        } catch {
+          return false;
+        }
+      });
+
+      if (goalSubmissions.length === 0) {
+        continue; // Meta sem submissões
+      }
+
+      // Calcular se a meta foi atingida
+      let isGoalAchieved = false;
+      let totalValue = 0;
+
+      if (goal.type === 'numeric') {
+        // Para metas numéricas: somar todos os valores
+        goalSubmissions.forEach(sub => {
+          try {
+            const checklist = JSON.parse(sub.checklist);
+            const goalData = checklist[goal.$id!];
+            if (goalData !== undefined && goalData !== null) {
+              totalValue += parseFloat(goalData) || 0;
+            }
+          } catch {
+            // Ignora erros
+          }
+        });
+        isGoalAchieved = totalValue >= goal.targetValue;
+      } else if (goal.type === 'percentage') {
+        // Para metas de porcentagem: usar último valor
+        const lastSubmission = goalSubmissions[goalSubmissions.length - 1];
+        try {
+          const checklist = JSON.parse(lastSubmission.checklist);
+          const goalData = checklist[goal.$id!];
+          totalValue = parseFloat(goalData) || 0;
+          isGoalAchieved = totalValue >= goal.targetValue;
+        } catch {
+          // Ignora erros
+        }
+      } else if (goal.type === 'task_completion') {
+        // Para tarefas: verificar se foi completada
+        const lastSubmission = goalSubmissions[goalSubmissions.length - 1];
+        try {
+          const checklist = JSON.parse(lastSubmission.checklist);
+          const goalData = checklist[goal.$id!];
+          isGoalAchieved = Boolean(goalData);
+        } catch {
+          // Ignora erros
+        }
+      } else if (goal.type === 'boolean_checklist') {
+        // Para checklists: verificar se todos os itens foram completados
+        const lastSubmission = goalSubmissions[goalSubmissions.length - 1];
+        try {
+          const checklist = JSON.parse(lastSubmission.checklist);
+          const goalData = checklist[goal.$id!];
+          
+          if (Array.isArray(goalData)) {
+            isGoalAchieved = goalData.every(Boolean);
+          } else if (typeof goalData === 'object') {
+            isGoalAchieved = Object.values(goalData).every(Boolean);
+          }
+        } catch {
+          // Ignora erros
+        }
+      }
+
+      // Se a meta foi atingida, adicionar ao array
+      if (isGoalAchieved) {
+        collaboratorsWithRewards.push({
+          id: collaborator.$id,
+          name: collaborator.name,
+          totalEarned: goal.monetaryValue,
+          pendingRewards: goal.monetaryValue,
+          rewardsCount: 1,
+          lastEarned: format(new Date(), 'dd/MM/yyyy'),
+          goalTitle: goal.title
+        });
+      }
+    }
+
+    return collaboratorsWithRewards
       .sort((a, b) => b.totalEarned - a.totalEarned); // Maior recompensa primeiro
   };
 
