@@ -249,7 +249,7 @@ export function ChecklistForm({ items, onSubmitAction, loading, error, disabled 
           
           <Button 
             type="submit" 
-            className="w-full"
+            className="w-full bg-bovia-primary hover:bg-bovia-dark text-white font-semibold py-3 text-lg transition-all duration-200 transform hover:scale-105"
             disabled={loading || !printFile}
           >
             {loading ? 'Enviando...' : 'Enviar Checklist'}

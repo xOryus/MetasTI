@@ -4,7 +4,7 @@
  * Gerenciamento de metas por setor
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -118,7 +118,7 @@ export default function AdminPanel() {
     }
   };
 
-  const filterUsers = () => {
+  const filterUsers = useCallback(() => {
     let filtered = [...users];
     
     if (sectorFilter !== 'all') {
@@ -130,7 +130,7 @@ export default function AdminPanel() {
     }
     
     setFilteredUsers(filtered);
-  };
+  }, [users, sectorFilter, roleFilter]);
 
   const deleteUser = async (userToDelete: ExtendedUserProfile) => {
     if (!confirm('Tem certeza que deseja excluir este usuário?')) {
@@ -245,28 +245,28 @@ export default function AdminPanel() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-3">
-              <Shield className="h-8 w-8 text-blue-600" />
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">Painel Administrativo</h1>
-                <p className="text-sm text-gray-500">Gestão de usuários e metas</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="text-right">
-                <p className="text-sm font-medium text-gray-900">Administrador</p>
-                <p className="text-xs text-gray-500">Sistema</p>
-              </div>
-              <Button 
-                onClick={handleLogout}
-                variant="outline" 
-                size="sm"
-                className="flex items-center gap-2"
-              >
+             {/* Header */}
+       <header className="bg-gradient-to-r from-bovia-primary to-bovia-secondary shadow-lg">
+         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+           <div className="flex justify-between items-center h-16">
+             <div className="flex items-center gap-3">
+               <Shield className="h-8 w-8 text-white" />
+               <div>
+                 <h1 className="text-xl font-bold text-white">Painel Administrativo</h1>
+                 <p className="text-sm text-white/80">Gestão de usuários e metas</p>
+               </div>
+             </div>
+                         <div className="flex items-center gap-4">
+               <div className="text-right">
+                 <p className="text-sm font-medium text-white">Administrador</p>
+                 <p className="text-xs text-white/80">Sistema</p>
+               </div>
+               <Button 
+                 onClick={handleLogout}
+                 variant="outline" 
+                 size="sm"
+                 className="flex items-center gap-2 bg-white/10 border-white/20 text-white hover:bg-white/20"
+               >
                 <LogOut className="w-4 h-4" />
                 Sair
               </Button>

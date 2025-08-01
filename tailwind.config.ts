@@ -31,7 +31,7 @@ const config: Config = {
           foreground: 'hsl(var(--popover-foreground))',
         },
         primary: {
-          DEFAULT: 'hsl(var(--primary))',
+          DEFAULT: '#E64114',
           foreground: 'hsl(var(--primary-foreground))',
         },
         secondary: {
@@ -59,6 +59,13 @@ const config: Config = {
           '3': 'hsl(var(--chart-3))',
           '4': 'hsl(var(--chart-4))',
           '5': 'hsl(var(--chart-5))',
+        },
+        bovia: {
+          primary: '#E64114',
+          secondary: '#FF6B35',
+          accent: '#FF8A65',
+          light: '#FFB3A3',
+          dark: '#CC3300',
         },
       },
       keyframes: {

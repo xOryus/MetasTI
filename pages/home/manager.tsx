@@ -1054,7 +1054,7 @@ export default function ManagerDashboard() {
       setCollaboratorRankings(rankingsData);
       setActionCards(actionCardsData);
     }
-  }, [profiles, submissions, profile]);
+  }, [profiles, submissions, profile, generateCollaboratorRankings, generateSmartAlerts, generateActionCards]);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -1117,9 +1117,9 @@ export default function ManagerDashboard() {
   const performanceTendencia = generatePerformanceTendencia();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-yellow-50 to-red-50">
       {/* Header Modernizado */}
-      <div className="bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-800 shadow-lg">
+      <div className="bg-gradient-to-r from-bovia-primary via-bovia-secondary to-bovia-accent shadow-lg">
         <div className="w-full px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div className="flex items-center space-x-4">
@@ -1131,8 +1131,8 @@ export default function ManagerDashboard() {
                   <h1 className="text-2xl font-bold text-white">
                     Dashboard Gerencial - {profile.sector}
                   </h1>
-                  <div className="flex items-center space-x-2 text-blue-100">
-                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                  <div className="flex items-center space-x-2 text-white/90">
+                    <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
                     <p className="text-sm font-medium">
                       Bem-vindo, {profile.name || (profile.role === 'manager' ? 'Gestor' : profile.role)}
                     </p>
@@ -1142,8 +1142,8 @@ export default function ManagerDashboard() {
             </div>
             
             <div className="flex items-center space-x-3">
-              <div className="hidden sm:flex items-center space-x-2 text-blue-100">
-                <div className="w-2 h-2 bg-blue-300 rounded-full"></div>
+              <div className="hidden sm:flex items-center space-x-2 text-white/90">
+                <div className="w-2 h-2 bg-white/60 rounded-full"></div>
                 <span className="text-sm font-medium">
                   {format(new Date(), 'dd/MM/yyyy')}
                 </span>
