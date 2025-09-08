@@ -44,7 +44,7 @@ export function useSubmissions() {
           const profilesResponse = await databases.listDocuments(
             DATABASE_ID,
             'user_profiles', // Collection de perfis
-            [Query.equal('sector', profile.sector)]
+            [Query.equal('sector', profile.sector), Query.limit(200)]
           );
           
           const profileIds = profilesResponse.documents.map(p => p.$id);
@@ -78,7 +78,7 @@ export function useSubmissions() {
       const response = await databases.listDocuments(
         DATABASE_ID,
         SUBMISSIONS_COLLECTION,
-        queries
+        queries ? [...queries, Query.limit(1000)] : [Query.limit(1000)]
       );
       
       logger.data.load('submissões', response.documents.length);

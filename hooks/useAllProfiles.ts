@@ -34,7 +34,7 @@ export function useAllProfiles(sectorFilter?: string) {
       const response = await databases.listDocuments(
         process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID!,
         process.env.NEXT_PUBLIC_APPWRITE_PROFILES_COLLECTION_ID!,
-        queries
+        queries.length > 0 ? [...queries, Query.limit(200)] : [Query.limit(200)]
       );
 
       setProfiles(response.documents as unknown as UserProfile[]);

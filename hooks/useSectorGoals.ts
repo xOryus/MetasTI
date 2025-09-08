@@ -38,7 +38,7 @@ export function useSectorGoals() {
       const response = await databases.listDocuments(
         DATABASE_ID,
         SECTOR_GOALS_COLLECTION,
-        queries
+        queries ? [...queries, Query.limit(500)] : [Query.limit(500)]
       );
       setGoals(response.documents as unknown as SectorGoal[]);
     } catch (err) {
@@ -67,7 +67,8 @@ export function useSectorGoals() {
     try {
       const response = await databases.listDocuments(
         DATABASE_ID,
-        SECTOR_GOALS_COLLECTION
+        SECTOR_GOALS_COLLECTION,
+        [Query.limit(500)]
       );
       setGoals(response.documents as unknown as SectorGoal[]);
     } catch (err) {
@@ -101,7 +102,7 @@ export function useSectorGoals() {
       const response = await databases.listDocuments(
         DATABASE_ID,
         SECTOR_GOALS_COLLECTION,
-        queries
+        [...queries, Query.limit(500)]
       );
       
       setGoals(response.documents as unknown as SectorGoal[]);
@@ -112,7 +113,8 @@ export function useSectorGoals() {
       try {
         const fallbackResponse = await databases.listDocuments(
           DATABASE_ID,
-          SECTOR_GOALS_COLLECTION
+          SECTOR_GOALS_COLLECTION,
+          [Query.limit(500)]
         );
         setGoals(fallbackResponse.documents as unknown as SectorGoal[]);
       } catch (fallbackErr) {
@@ -132,7 +134,8 @@ export function useSectorGoals() {
         SECTOR_GOALS_COLLECTION,
         [
           Query.equal('scope', GoalScope.INDIVIDUAL),
-          Query.equal('assignedUserId', userId)
+          Query.equal('assignedUserId', userId),
+          Query.limit(500)
         ]
       );
       

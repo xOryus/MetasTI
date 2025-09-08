@@ -60,7 +60,7 @@ export const getProfileAndSubmissions = async (cookieHeader: string | undefined)
     const submissionsResponse = await databases.listDocuments(
       DATABASE_ID,
       SUBMISSIONS_COLLECTION,
-      submissionQueries
+      submissionQueries.length > 0 ? [...submissionQueries, Query.limit(1000)] : [Query.limit(1000)]
     );
 
     return {

@@ -27,7 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const response = await adminDatabases.listDocuments(
         DATABASE_ID,
         USER_PROFILES_COLLECTION,
-        queries
+        queries.length > 0 ? [...queries, Query.limit(500)] : [Query.limit(500)]
       );
       
       // Buscar dados completos do usuário para cada profile
