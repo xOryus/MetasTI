@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -40,7 +40,18 @@ const initialFormData: GoalFormData = {
 export function SectorGoalsManager() {
   const { user, profile } = useAuth();
   const { goals, loading, error, createGoal, updateGoal, deleteGoal, toggleGoalStatus, refetch, fetchGoals } = useSectorGoals();
-  const { profiles } = useAllProfiles();
+  const { profiles, loading: profilesLoading, error: profilesError } = useAllProfiles('all');
+  
+  // Debug dos perfis
+  useEffect(() => {
+    console.log('🚀 SectorGoalsManager - Estado dos perfis:');
+    console.log('📊 Loading:', profilesLoading);
+    console.log('❌ Error:', profilesError);
+    console.log('👥 Perfis carregados:', profiles.length);
+    if (profiles.length > 0) {
+      console.log('📝 Sample profile structure:', profiles[0]);
+    }
+  }, [profiles, profilesLoading, profilesError]);
   
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -50,11 +61,19 @@ export function SectorGoalsManager() {
   const [selectedScopeFilter, setSelectedScopeFilter] = useState<GoalScope | 'all'>('all');
   const [currentStep, setCurrentStep] = useState<"type" | "details">("type");
   const [expandedGoals, setExpandedGoals] = useState<Set<string>>(new Set());
+  const [selectedUserFilter, setSelectedUserFilter] = useState<string>('all');
   
-  // Função para obter o nome do usuário pelo ID
+  // Mapa de userId -> nome (evita buscas repetidas e melhora performance)
+  const userIdToName = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const p of profiles) {
+      if (p.userId) map.set(p.userId, p.name);
+    }
+    return map;
+  }, [profiles]);
+
   const getUserNameById = (userId: string): string => {
-    const profile = profiles.find(p => p.userId === userId);
-    return profile ? profile.name : 'Usuário não encontrado';
+    return userIdToName.get(userId) || 'Usuário não encontrado';
   };
 
   // Função para obter o ícone baseado no tipo de meta
@@ -133,10 +152,11 @@ export function SectorGoalsManager() {
     }
   }, [profile?.role, profile?.sector, profile?.userId]); // Removemos fetchGoals da dependência
 
-  // Aplicar filtros por setor e escopo
+  // Aplicar filtros por setor, escopo e colaborador
   const filteredGoals = goals
     .filter(goal => selectedSectorFilter === 'all' ? true : goal.sectorId === selectedSectorFilter)
-    .filter(goal => selectedScopeFilter === 'all' ? true : goal.scope === selectedScopeFilter);
+    .filter(goal => selectedScopeFilter === 'all' ? true : goal.scope === selectedScopeFilter)
+    .filter(goal => selectedUserFilter === 'all' ? true : (goal.scope === GoalScope.INDIVIDUAL && goal.assignedUserId === selectedUserFilter));
 
   const handleInputChange = (field: keyof GoalFormData, value: any) => {
     setFormData(prev => {
@@ -387,6 +407,19 @@ export function SectorGoalsManager() {
             <SelectItem value={GoalScope.INDIVIDUAL}>Metas Individuais</SelectItem>
           </SelectContent>
         </Select>
+
+        {/* Filtro por colaborador */}
+        <Select value={selectedUserFilter} onValueChange={(value) => setSelectedUserFilter(value)}>
+          <SelectTrigger className="w-56">
+            <SelectValue placeholder="Colaborador (opcional)" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os colaboradores</SelectItem>
+            {profiles.map((p) => (
+              <SelectItem key={p.$id} value={p.userId}>{p.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         
         <div className="text-sm text-gray-600 bg-gray-50 px-3 py-1 rounded-full">
           {filteredGoals.length} meta(s) encontrada(s)
@@ -547,15 +580,18 @@ export function SectorGoalsManager() {
                   </div>
                 </CollapsibleTrigger>
 
-                {/* Conteúdo expandido */}
+                {/* Conteúdo expandido - lazy mount para performance */}
                 <CollapsibleContent>
+                  {expandedGoals.has(goal.$id!) && (
                   <div className="border-t border-gray-100 p-4 space-y-4">
                     {/* Informações do usuário atribuído */}
                     {goal.scope === GoalScope.INDIVIDUAL && goal.assignedUserId && (
                       <div className="flex items-center gap-2 text-sm text-gray-600 bg-blue-50 px-3 py-2 rounded-lg">
                         <Users className="h-4 w-4 text-blue-600" />
                         <span className="font-medium">Usuário Atribuído:</span>
-                        <span>{getUserNameById(goal.assignedUserId)}</span>
+                        <span>
+                          {profilesLoading ? 'Carregando...' : getUserNameById(goal.assignedUserId)}
+                        </span>
                       </div>
                     )}
 
@@ -593,6 +629,7 @@ export function SectorGoalsManager() {
                       </div>
                     )}
                   </div>
+                  )}
                 </CollapsibleContent>
               </Card>
             </Collapsible>
