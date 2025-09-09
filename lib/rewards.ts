@@ -125,9 +125,45 @@ export const calculateDailyRewardValue = (
   goalCreatedAt: string, // Data de criação da meta
   referenceDate: Date = new Date()
 ): number => {
-  const periodInterval = getPeriodInterval(period, goalCreatedAt, referenceDate);
-  const daysInPeriod = Math.ceil((periodInterval.end.getTime() - periodInterval.start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-  return Math.round(monetaryValue / daysInPeriod);
+  // Regra de exibição do valor diário:
+  // - Diário: valor integral
+  // - Semanal: dividir por 7
+  // - Mensal: dividir pelos dias do mês calendário de referência
+  // - Trimestral: dividir pelos dias do trimestre calendário de referência
+  // - Anual: dividir pelos dias do ano calendário de referência
+  // Motivo: exibição estável e coerente com a perspectiva do período do calendário,
+  // independente do dia de criação da meta.
+  switch (period) {
+    case GoalPeriod.DAILY: {
+      return monetaryValue;
+    }
+    case GoalPeriod.WEEKLY: {
+      return Math.round(monetaryValue / 7);
+    }
+    case GoalPeriod.MONTHLY: {
+      const start = startOfMonth(referenceDate);
+      const end = endOfMonth(referenceDate);
+      const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      return Math.round(monetaryValue / days);
+    }
+    case GoalPeriod.QUARTERLY: {
+      const start = startOfQuarter(referenceDate);
+      const end = endOfQuarter(referenceDate);
+      const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      return Math.round(monetaryValue / days);
+    }
+    case GoalPeriod.YEARLY: {
+      const start = startOfYear(referenceDate);
+      const end = endOfYear(referenceDate);
+      const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      return Math.round(monetaryValue / days);
+    }
+    default: {
+      const periodInterval = getPeriodInterval(period, goalCreatedAt, referenceDate);
+      const daysInPeriod = Math.ceil((periodInterval.end.getTime() - periodInterval.start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      return Math.round(monetaryValue / daysInPeriod);
+    }
+  }
 };
 
 /**
