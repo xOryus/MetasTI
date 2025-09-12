@@ -566,6 +566,7 @@ export default function CollaboratorHome() {
     return null;
   }
 
+  // Considerar "concluídas" apenas quando não houver pendências
   const hasSubmittedToday = hasSubmissionToday(profile.$id);
 
   return (
@@ -641,13 +642,13 @@ export default function CollaboratorHome() {
                     <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto"></div>
                     <p className="mt-3 text-gray-600">Carregando metas do setor...</p>
                   </div>
-                ) : (checklistItemsWithProgress.length === 0 && individualGoalsWithProgress.length === 0) ? (
+                ) : sectorGoals.length === 0 ? (
                   <div className="text-center py-8 text-gray-500">
                     <Target className="w-12 h-12 mx-auto mb-3 text-blue-400" />
                     <h3 className="text-lg font-medium text-gray-700 mb-2">Nenhuma meta configurada</h3>
                     <p className="text-sm">O administrador ainda não configurou metas para o setor {profile?.sector}.</p>
                   </div>
-                ) : !hasSubmittedToday ? (
+                ) : (checklistItemsWithProgress.length > 0 || individualGoalsWithProgress.length > 0) ? (
                   <div className="space-y-6">
                     {/* Metas Individuais com Progresso Parcial */}
                     {individualGoalsWithProgress.length > 0 ? (
@@ -895,7 +896,7 @@ export default function CollaboratorHome() {
                   <div className="text-center py-8 text-gray-500">
                     <Target className="w-12 h-12 mx-auto mb-3 text-green-500" />
                     <h3 className="text-lg font-medium text-gray-700 mb-2">Parabéns! Metas do dia concluídas</h3>
-                    <p className="text-sm">Você já enviou seu checklist hoje. Volte amanhã para novas metas!</p>
+                    <p className="text-sm">Você completou todas as metas disponíveis para hoje.</p>
                   </div>
                 )}
               </CardContent>

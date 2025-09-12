@@ -50,8 +50,9 @@ export interface UserRewardStats {
 }
 
 /**
- * Obter intervalo de datas baseado no período da meta
- * VERSÃO CORRIGIDA: Usa períodos baseados no mês atual para metas mensais
+ * Obter intervalo de datas baseado no período da meta e na data de referência (calendário atual)
+ * A janela é alinhada ao calendário do referenceDate e CLAMP no início pela data de criação da meta.
+ * Ex.: Mensal → [início do mês atual, fim do mês atual], mas não antes da criação da meta.
  */
 export const getPeriodInterval = (
   period: GoalPeriod, 
@@ -59,46 +60,44 @@ export const getPeriodInterval = (
   referenceDate: Date = new Date()
 ) => {
   const goalCreationDate = parseISO(goalCreatedAt);
-  
+
+  let calendarStart: Date;
+  let calendarEnd: Date;
+
   switch (period) {
-    case GoalPeriod.DAILY:
-      // Período diário: 24 horas a partir da criação
-      return {
-        start: startOfDay(goalCreationDate),
-        end: endOfDay(goalCreationDate)
-      };
-      
-    case GoalPeriod.WEEKLY:
-      // Período semanal: 7 dias a partir da criação
-      return {
-        start: startOfDay(goalCreationDate),
-        end: endOfDay(new Date(goalCreationDate.getTime() + (6 * 24 * 60 * 60 * 1000))) // +6 dias
-      };
-      
-    case GoalPeriod.MONTHLY:
-      // Período mensal: do dia da criação até o último dia do mês
-      return {
-        start: startOfDay(goalCreationDate),
-        end: endOfMonth(goalCreationDate) // Último dia do mês da criação
-      };
-      
-    case GoalPeriod.QUARTERLY:
-      // Período trimestral: do dia da criação até o final do trimestre
-      return {
-        start: startOfDay(goalCreationDate),
-        end: endOfQuarter(goalCreationDate) // Final do trimestre da criação
-      };
-      
-    case GoalPeriod.YEARLY:
-      // Período anual: do dia da criação até o final do ano
-      return {
-        start: startOfDay(goalCreationDate),
-        end: endOfYear(goalCreationDate) // Final do ano da criação
-      };
-      
+    case GoalPeriod.DAILY: {
+      calendarStart = startOfDay(referenceDate);
+      calendarEnd = endOfDay(referenceDate);
+      break;
+    }
+    case GoalPeriod.WEEKLY: {
+      calendarStart = startOfWeek(referenceDate);
+      calendarEnd = endOfWeek(referenceDate);
+      break;
+    }
+    case GoalPeriod.MONTHLY: {
+      calendarStart = startOfMonth(referenceDate);
+      calendarEnd = endOfMonth(referenceDate);
+      break;
+    }
+    case GoalPeriod.QUARTERLY: {
+      calendarStart = startOfQuarter(referenceDate);
+      calendarEnd = endOfQuarter(referenceDate);
+      break;
+    }
+    case GoalPeriod.YEARLY: {
+      calendarStart = startOfYear(referenceDate);
+      calendarEnd = endOfYear(referenceDate);
+      break;
+    }
     default:
       throw new Error(`Período não suportado: ${period}`);
   }
+
+  // Início não pode ser antes da criação da meta
+  const start = goalCreationDate > calendarStart ? startOfDay(goalCreationDate) : calendarStart;
+  const end = calendarEnd;
+  return { start, end };
 };
 
 /**
@@ -238,8 +237,8 @@ export const isGoalAchievedInPeriod = (
     }
   }
 
-  const completionRate = userSubmissions.length > 0 
-    ? (daysAchieved / userSubmissions.length) * 100 
+  const completionRate = totalDaysInPeriod > 0 
+    ? (daysAchieved / totalDaysInPeriod) * 100 
     : 0;
 
   // Para períodos mais longos, considerar atingido se pelo menos 80% dos dias foram cumpridos
@@ -345,12 +344,11 @@ export const calculateUserRewards = (
     // Adicionar aos totais baseado no valor efetivamente ganho
     if (earnedAmount > 0) {
       // Verificar se a recompensa já foi "paga" (período já passou)
+      // Disponibilidade e pendência:
+      // - totalAvailableRewards: orçamento total das metas com recompensa
+      // - totalPendingRewards: valor ganho cujo período já terminou (a pagar)
       const isPeriodCompleted = referenceDate > periodInterval.end;
-      
-      if (isPeriodCompleted) {
-        // Período completado, recompensa foi ganha
-        totalPendingRewards += earnedAmount;
-      }
+      if (isPeriodCompleted) totalPendingRewards += earnedAmount;
 
       // Contabilizar recompensas por período de referência usando sobreposição
       if (doPeriodsOverlap(periodInterval, monthInterval)) {
