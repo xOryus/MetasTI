@@ -21,6 +21,8 @@ export interface CreateSectorGoalData {
   hasMonetaryReward?: boolean; // Indica se possui recompensa monetária
   monetaryValue?: number; // Valor em centavos
   currency?: string; // Código da moeda
+  // Comprovação
+  requireProof?: boolean; // Exigir anexo de comprovação
 }
 
 export interface UpdateSectorGoalData extends Partial<CreateSectorGoalData> {}

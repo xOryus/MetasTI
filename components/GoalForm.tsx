@@ -71,6 +71,8 @@ export interface GoalFormData {
   hasMonetaryReward: boolean;
   monetaryValue: string; // String para facilitar input formatado
   currency: string;
+  // Comprovação
+  requireProof?: boolean;
 }
 
 interface GoalFormProps {
@@ -551,6 +553,24 @@ export function GoalForm({ formData, handleInputChange, isEdit = false, onStepCh
                   )}
                 </div>
               )}
+
+              {/* Seção de Comprovação (Anexo) */}
+              <div className="space-y-4 border rounded-lg p-4 bg-amber-50">
+                <h4 className="font-medium text-amber-900 border-b border-amber-200 pb-2">📎 Comprovação (anexo)</h4>
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="requireProof"
+                    checked={Boolean(formData.requireProof)}
+                    onCheckedChange={(checked) => handleInputChange('requireProof', checked)}
+                  />
+                  <Label htmlFor="requireProof" className="text-amber-700 font-medium">
+                    Exigir anexo de comprovação no envio
+                  </Label>
+                </div>
+                <p className="text-xs text-amber-700">
+                  Quando desativado, o colaborador poderá enviar sem anexos.
+                </p>
+              </div>
 
               {/* Status da Meta */}
               <div className="space-y-4 border rounded-lg p-4 bg-blue-50">

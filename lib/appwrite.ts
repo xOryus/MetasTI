@@ -102,6 +102,8 @@ export interface SectorGoal {
   monetaryValue?: number; // Valor em centavos para precisão
   currency?: string; // Código da moeda (default: BRL)
   hasMonetaryReward?: boolean; // Indica se possui recompensa monetária
+  // Comprovação
+  requireProof?: boolean; // Se verdadeiro, exige anexo de comprovação no envio
 }
 
 export interface UserProfile {
@@ -121,7 +123,7 @@ export interface Submission {
   date: string;
   checklist: string; // JSON string com as respostas do checklist
   observation?: string;
-  printFileId: string;
+  printFileId?: string;
   $createdAt: string;
   $updatedAt: string;
 }
@@ -142,6 +144,8 @@ export interface CreateSectorGoalData {
   monetaryValue?: number; // Valor em centavos
   currency?: string; // Código da moeda
   hasMonetaryReward?: boolean; // Possui recompensa monetária
+  // Comprovação
+  requireProof?: boolean; // Se verdadeiro, exige anexo de comprovação no envio
 }
 
 // Função utilitária para gerar URL de visualização de arquivo

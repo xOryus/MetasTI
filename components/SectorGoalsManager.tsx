@@ -34,7 +34,9 @@ const initialFormData: GoalFormData = {
   // Campos monetários
   hasMonetaryReward: false,
   monetaryValue: '',
-  currency: 'BRL'
+  currency: 'BRL',
+  // Comprovação
+  requireProof: true
 };
 
 export function SectorGoalsManager() {
@@ -246,7 +248,9 @@ export function SectorGoalsManager() {
         currency: formData.currency,
         monetaryValue: formData.hasMonetaryReward && formData.monetaryValue 
           ? reaisToCentavos(parseCurrencyInput(formData.monetaryValue))
-          : undefined
+          : undefined,
+        // Comprovação
+        requireProof: formData.requireProof
       };
       
       await createGoal(goalData);
@@ -284,7 +288,9 @@ export function SectorGoalsManager() {
         currency: formData.currency,
         monetaryValue: formData.hasMonetaryReward && formData.monetaryValue 
           ? reaisToCentavos(parseCurrencyInput(formData.monetaryValue))
-          : undefined
+          : undefined,
+        // Comprovação
+        requireProof: formData.requireProof
       };
 
       await updateGoal(editingGoal.$id, updateData);
@@ -332,7 +338,9 @@ export function SectorGoalsManager() {
       // Campos monetários
       hasMonetaryReward: goal.hasMonetaryReward || false,
       monetaryValue: goal.monetaryValue ? String(centavosToReais(goal.monetaryValue)) : '',
-      currency: goal.currency || 'BRL'
+      currency: goal.currency || 'BRL',
+      // Comprovação
+      requireProof: goal.requireProof ?? true
     });
     setIsEditDialogOpen(true);
   };

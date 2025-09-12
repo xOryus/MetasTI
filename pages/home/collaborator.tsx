@@ -438,9 +438,17 @@ export default function CollaboratorHome() {
       // Verificar se há metas individuais com dados
       const hasIndividualGoals = Object.keys(individualGoalData).length > 0;
       
-      // Se há itens marcados ou metas individuais, verificar se há arquivos
-      if ((hasChecklistItems || hasIndividualGoals) && Object.keys(goalFiles).length === 0) {
-        setSubmitError('Por favor, anexe pelo menos um arquivo de comprovação.');
+      // Verificar se alguma meta envolvida exige comprovação e então exigir arquivo
+      const involvedGoalIds = new Set<string>();
+      Object.keys(individualGoalData).forEach((id) => involvedGoalIds.add(id));
+      goalsByType.checklistGoals.forEach((goal) => {
+        const someChecked = goal.items.some((item: any) => checklistData[item.id]);
+        if (someChecked && goal.$id) involvedGoalIds.add(goal.$id);
+      });
+
+      const requiresProof = sectorGoals.some((g) => g.requireProof && g.$id && involvedGoalIds.has(g.$id));
+      if (requiresProof && Object.keys(goalFiles).length === 0) {
+        setSubmitError('Pelo menos uma das metas selecionadas exige anexo de comprovação.');
         return;
       }
       
@@ -743,7 +751,7 @@ export default function CollaboratorHome() {
                                       </div>
                                     )}
                                     <div className="pt-3 border-t border-gray-200">
-                                      <label className="block text-sm font-medium text-gray-700 mb-2">Comprovação desta meta:</label>
+                                      <label className="block text-sm font-medium text-gray-700 mb-2">Comprovação desta meta {goal.requireProof ? '(obrigatória)' : '(opcional)'}:</label>
                                       <input type="file" accept="image/*,.pdf,.doc,.docx" className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 file:mr-4 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-sm file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" onChange={(e) => { const file = e.target.files?.[0]; if (file) updateGoalFile(goal.$id!, file); }} />
                                       <p className="text-xs text-gray-500 mt-1">Formatos aceitos: Imagens, PDF, DOC, DOCX</p>
                                     </div>

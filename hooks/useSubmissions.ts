@@ -102,15 +102,19 @@ export function useSubmissions() {
     userProfileId: string,
     answers: Record<string, boolean>,
     observation: string,
-    printFile: File
+    printFile?: File
   ) => {
     try {
-      const uploadResponse = await storage.createFile(
-        PRINTS_BUCKET,
-        ID.unique(),
-        printFile
-      );
-      
+      let uploadedFileId: string | undefined = undefined;
+      if (printFile) {
+        const uploadResponse = await storage.createFile(
+          PRINTS_BUCKET,
+          ID.unique(),
+          printFile
+        );
+        uploadedFileId = uploadResponse.$id;
+      }
+
       const submission = await databases.createDocument(
         DATABASE_ID,
         SUBMISSIONS_COLLECTION,
@@ -120,7 +124,7 @@ export function useSubmissions() {
           date: new Date().toISOString(),
           checklist: JSON.stringify(answers), // Usando checklist em vez de answers
           observation: observation || '',
-          printFileId: uploadResponse.$id
+          ...(uploadedFileId ? { printFileId: uploadedFileId } : {})
         }
       );
       
