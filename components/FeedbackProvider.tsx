@@ -30,11 +30,32 @@ const FeedbackContext = createContext<FeedbackContextValue | null>(null);
 export const useFeedback = (): FeedbackContextValue => {
   const ctx = useContext(FeedbackContext);
   if (!ctx) {
-    // Fallback seguro caso Provider não esteja montado
+    // Fallback visual caso Provider não esteja montado
     return {
-      toastSuccess: (message: string) => typeof window !== 'undefined' && window.alert(message),
-      toastError: (message: string) => typeof window !== 'undefined' && window.alert(message),
-      toastInfo: (message: string) => typeof window !== 'undefined' && window.alert(message),
+      toastSuccess: (message: string) => {
+        if (typeof window === 'undefined') return;
+        const toast = document.createElement('div');
+        toast.style.cssText = 'position:fixed;top:20px;right:20px;background:#10b981;color:white;padding:12px 20px;border-radius:8px;z-index:9999;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.15)';
+        toast.textContent = `✅ ${message}`;
+        document.body.appendChild(toast);
+        setTimeout(() => document.body.removeChild(toast), 3500);
+      },
+      toastError: (message: string) => {
+        if (typeof window === 'undefined') return;
+        const toast = document.createElement('div');
+        toast.style.cssText = 'position:fixed;top:20px;right:20px;background:#ef4444;color:white;padding:12px 20px;border-radius:8px;z-index:9999;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.15)';
+        toast.textContent = `❌ ${message}`;
+        document.body.appendChild(toast);
+        setTimeout(() => document.body.removeChild(toast), 4000);
+      },
+      toastInfo: (message: string) => {
+        if (typeof window === 'undefined') return;
+        const toast = document.createElement('div');
+        toast.style.cssText = 'position:fixed;top:20px;right:20px;background:#3b82f6;color:white;padding:12px 20px;border-radius:8px;z-index:9999;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.15)';
+        toast.textContent = `ℹ️ ${message}`;
+        document.body.appendChild(toast);
+        setTimeout(() => document.body.removeChild(toast), 3500);
+      },
       confirm: async (options: ConfirmOptions) => {
         if (typeof window === 'undefined') return false;
         return window.confirm(options?.description || 'Confirmar ação?');
