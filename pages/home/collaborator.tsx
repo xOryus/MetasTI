@@ -89,7 +89,7 @@ export default function CollaboratorHome() {
 
   // NOVA LÓGICA: Calcular itens de checklist com progresso parcial (por dia)
   const checklistItemsWithProgress = useMemo(() => {
-    if (!profile?.userId || !goalsByType.checklistGoals.length) {
+    if (!goalsByType.checklistGoals.length) {
       return [];
     }
 
@@ -143,11 +143,11 @@ export default function CollaboratorHome() {
           goalId: goal.$id
         }));
     });
-  }, [goalsByType.checklistGoals, submissions, profile?.userId]);
+  }, [goalsByType.checklistGoals, submissions]);
 
   // NOVA LÓGICA: Calcular metas individuais com progresso parcial
   const individualGoalsWithProgress = useMemo(() => {
-    if (!profile?.userId || !goalsByType.individualGoals.length) {
+    if (!goalsByType.individualGoals.length) {
       return [];
     }
 
@@ -223,7 +223,7 @@ export default function CollaboratorHome() {
         return true;
       }
     });
-  }, [goalsByType.individualGoals, submissions, profile?.userId]);
+  }, [goalsByType.individualGoals, submissions]);
 
   // Manter compatibilidade com ChecklistForm (apenas para metas do tipo checklist)
   const checklistItems = useMemo(() => {
@@ -908,11 +908,19 @@ export default function CollaboratorHome() {
                     )}
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <Target className="w-12 h-12 mx-auto mb-3 text-green-500" />
-                    <h3 className="text-lg font-medium text-gray-700 mb-2">Parabéns! Metas do dia concluídas</h3>
-                    <p className="text-sm">Você completou todas as metas disponíveis para hoje.</p>
-                  </div>
+                  hasSubmittedToday ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <Target className="w-12 h-12 mx-auto mb-3 text-green-500" />
+                      <h3 className="text-lg font-medium text-gray-700 mb-2">Parabéns! Metas do dia concluídas</h3>
+                      <p className="text-sm">Você completou todas as metas disponíveis para hoje.</p>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      <Target className="w-12 h-12 mx-auto mb-3 text-blue-500" />
+                      <h3 className="text-lg font-medium text-gray-700 mb-2">Nenhuma meta pendente listada agora</h3>
+                      <p className="text-sm">Se houver metas individuais para hoje, elas aparecerão aqui para envio.</p>
+                    </div>
+                  )
                 )}
               </CardContent>
             </Card>
