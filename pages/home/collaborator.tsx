@@ -87,16 +87,20 @@ export default function CollaboratorHome() {
     return { checklistGoals, individualGoals };
   }, [sectorGoals]);
 
-  // NOVA LÓGICA: Calcular itens de checklist com progresso parcial
+  // NOVA LÓGICA: Calcular itens de checklist com progresso parcial (por dia)
   const checklistItemsWithProgress = useMemo(() => {
     if (!profile?.userId || !goalsByType.checklistGoals.length) {
       return [];
     }
 
+    const today = new Date();
+
     return goalsByType.checklistGoals.flatMap(goal => {
-      // Buscar todas as submissões deste usuário para esta meta
-      const goalSubmissions = submissions.filter(sub => {
+      // Considerar apenas submissões do dia atual para esta meta
+      const goalSubmissionsToday = submissions.filter(sub => {
         try {
+          const sameDay = isSameDay(new Date(sub.date), today);
+          if (!sameDay) return false;
           const checklist = JSON.parse(sub.checklist);
           return checklist[goal.$id!] !== undefined;
         } catch {
@@ -104,25 +108,23 @@ export default function CollaboratorHome() {
         }
       });
 
-      // Calcular itens já completados
-      const completedItems = new Set<string>();
-      goalSubmissions.forEach(sub => {
+      // Calcular itens já completados HOJE
+      const completedItemsToday = new Set<string>();
+      goalSubmissionsToday.forEach(sub => {
         try {
           const checklist = JSON.parse(sub.checklist);
           const goalData = checklist[goal.$id!];
           
           if (Array.isArray(goalData)) {
-            // Se for array de itens (formato antigo)
             goalData.forEach((completed: boolean, index: number) => {
               if (completed) {
-                completedItems.add(`${goal.$id}-${index}`);
+                completedItemsToday.add(`${goal.$id}-${index}`);
               }
             });
-          } else if (typeof goalData === 'object') {
-            // Se for objeto com IDs dos itens
+          } else if (goalData && typeof goalData === 'object') {
             Object.entries(goalData).forEach(([itemId, completed]) => {
               if (completed) {
-                completedItems.add(itemId);
+                completedItemsToday.add(itemId);
               }
             });
           }
@@ -131,9 +133,9 @@ export default function CollaboratorHome() {
         }
       });
 
-      // Retornar apenas itens não completados
+      // Retornar apenas itens não completados HOJE
       return goal.items
-        .filter((item: any) => !completedItems.has(item.id))
+        .filter((item: any) => !completedItemsToday.has(item.id))
         .map((item: any) => ({
           ...item,
           goalTitle: goal.title,
@@ -193,12 +195,25 @@ export default function CollaboratorHome() {
             const currentPercentage = parseFloat(goalData) || 0;
             return currentPercentage < goal.targetValue;
           
-          case 'task_completion':
-            // Para tarefas, verificar se foi completada
-            const lastSubmissionTask = goalSubmissions[goalSubmissions.length - 1];
-            const checklistTask = JSON.parse(lastSubmissionTask.checklist);
-            const goalDataTask = checklistTask[goal.$id!];
-            return !Boolean(goalDataTask);
+          case 'task_completion': {
+            // Para tarefas diárias, considerar apenas submissões de HOJE
+            const today = new Date();
+            const submissionsToday = goalSubmissions.filter(sub => isSameDay(new Date(sub.date), today));
+            if (submissionsToday.length === 0) {
+              return true; // Nenhuma submissão hoje -> ainda pendente
+            }
+            // Verificar se alguma submissão de hoje marcou como concluída
+            const completedToday = submissionsToday.some(sub => {
+              try {
+                const checklistTask = JSON.parse(sub.checklist);
+                const goalDataTask = checklistTask[goal.$id!];
+                return Boolean(goalDataTask);
+              } catch {
+                return false;
+              }
+            });
+            return !completedToday;
+          }
           
           default:
             return true;
