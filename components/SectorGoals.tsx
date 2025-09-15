@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Target, Users, Calendar } from 'lucide-react';
+import { useFeedback } from '@/components/FeedbackProvider';
 
 interface Sector {
   id: number;
@@ -35,6 +36,7 @@ const SectorGoals = () => {
   const [sectors, setSectors] = useState<Sector[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
+  const { confirm } = useFeedback();
   const [formData, setFormData] = useState({
     sectorId: '',
     title: '',
@@ -156,8 +158,16 @@ const SectorGoals = () => {
     setShowModal(true);
   };
 
-  const handleDelete = (goalId: number) => {
-    if (window.confirm('Tem certeza que deseja excluir esta meta?')) {
+  const handleDelete = async (goalId: number) => {
+    const confirmed = await confirm({
+      title: 'Excluir Meta',
+      description: 'Tem certeza que deseja excluir esta meta? Esta ação não pode ser desfeita.',
+      confirmText: 'Excluir',
+      cancelText: 'Cancelar',
+      danger: true
+    });
+    
+    if (confirmed) {
       setGoals(goals.filter(goal => goal.id !== goalId));
     }
   };

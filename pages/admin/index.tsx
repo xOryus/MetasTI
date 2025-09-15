@@ -34,6 +34,7 @@ import {
   EyeOff,
   Filter
 } from 'lucide-react';
+import { useFeedback } from '@/components/FeedbackProvider';
 
 interface ExtendedUserProfile extends UserProfile {
   $id: string;
@@ -48,6 +49,7 @@ interface ExtendedUserProfile extends UserProfile {
 export default function AdminPanel() {
   const { user, logout, loading: authLoading, isAdmin } = useAuth();
   const router = useRouter();
+  const { confirm, toastSuccess, toastError } = useFeedback();
   const [users, setUsers] = useState<ExtendedUserProfile[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<ExtendedUserProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -133,7 +135,15 @@ export default function AdminPanel() {
   }, [users, sectorFilter, roleFilter]);
 
   const deleteUser = async (userToDelete: ExtendedUserProfile) => {
-    if (!confirm('Tem certeza que deseja excluir este usuário?')) {
+    const confirmed = await confirm({
+      title: 'Excluir Usuário',
+      description: `Tem certeza que deseja excluir o usuário "${userToDelete.name}"? Esta ação não pode ser desfeita.`,
+      confirmText: 'Excluir',
+      cancelText: 'Cancelar',
+      danger: true
+    });
+    
+    if (!confirmed) {
       return;
     }
 

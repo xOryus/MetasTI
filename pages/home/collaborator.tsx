@@ -18,12 +18,14 @@ import { Target, TrendingUp, Calendar, Award } from 'lucide-react';
 import { logger } from '@/lib/logger';
 import { formatCurrency, centavosToReais } from '@/lib/currency';
 import { calculateUserRewards, formatPeriodDisplay, calculateDailyRewardValue, type UserRewardStats } from '@/lib/rewards';
+import { useFeedback } from '@/components/FeedbackProvider';
 
 export default function CollaboratorHome() {
   const { isAuthenticated, profile, logout, loading: authLoading } = useAuth();
   const router = useRouter();
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitLoading, setSubmitLoading] = useState(false);
+  const { toastSuccess, toastError } = useFeedback();
   
   // Estados para coleta de dados das metas
   const [individualGoalData, setIndividualGoalData] = useState<Record<string, any>>({});
@@ -476,7 +478,7 @@ export default function CollaboratorHome() {
       await createSubmission(profile.$id, combinedAnswers, generalObservation, firstFile);
       
       logger.form.success('all-goals');
-      alert('Progresso salvo com sucesso!');
+      toastSuccess('Progresso salvo com sucesso!', 'Sucesso');
       
       // Limpar apenas os dados de hoje, mantendo o progresso histórico
       setIndividualGoalData({});
@@ -507,7 +509,7 @@ export default function CollaboratorHome() {
       await createSubmission(profile.$id, answers, observation, printFile);
       
       logger.form.success('checklist');
-      alert('Checklist enviado com sucesso!');
+      toastSuccess('Checklist enviado com sucesso!', 'Sucesso');
     } catch (error: any) {
       logger.form.error('checklist', error.message);
       setSubmitError(error.message);
