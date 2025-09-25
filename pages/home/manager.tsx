@@ -1396,7 +1396,7 @@ export default function ManagerDashboard() {
                   <div>
                     <span className="text-xl font-bold text-gray-900">Ranking - {profile.sector}</span>
                     <p className="text-sm font-normal text-gray-600 mt-1">
-                      Top 5 colaboradores por performance
+                      Ranking completo de colaboradores por performance
                     </p>
                   </div>
                 </CardTitle>
@@ -1404,7 +1404,7 @@ export default function ManagerDashboard() {
               
                               <CardContent className="p-6">
                   <div className="space-y-4">
-                  {collaboratorRankings.slice(0, 5).map((ranking, index) => (
+                  {collaboratorRankings.map((ranking, index) => (
                     <div 
                       key={ranking.id}
                       className="group relative p-4 rounded-lg bg-white hover:bg-gray-50 border border-gray-200 hover:border-blue-300 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer"
