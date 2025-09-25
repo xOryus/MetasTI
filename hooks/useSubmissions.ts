@@ -102,10 +102,14 @@ export function useSubmissions() {
     userProfileId: string,
     answers: Record<string, boolean>,
     observation: string,
-    printFile?: File
+    printFile?: File,
+    goalFiles?: Record<string, File>
   ) => {
     try {
       let uploadedFileId: string | undefined = undefined;
+      let goalFilesData: Record<string, string> = {};
+
+      // Upload arquivo geral (compatibilidade)
       if (printFile) {
         const uploadResponse = await storage.createFile(
           PRINTS_BUCKET,
@@ -113,6 +117,22 @@ export function useSubmissions() {
           printFile
         );
         uploadedFileId = uploadResponse.$id;
+      }
+
+      // Upload arquivos por meta
+      if (goalFiles && Object.keys(goalFiles).length > 0) {
+        for (const [goalId, file] of Object.entries(goalFiles)) {
+          try {
+            const uploadResponse = await storage.createFile(
+              PRINTS_BUCKET,
+              ID.unique(),
+              file
+            );
+            goalFilesData[goalId] = uploadResponse.$id;
+          } catch (error) {
+            console.error(`Erro ao fazer upload do arquivo da meta ${goalId}:`, error);
+          }
+        }
       }
 
       const submission = await databases.createDocument(
@@ -124,7 +144,8 @@ export function useSubmissions() {
           date: new Date().toISOString(),
           checklist: JSON.stringify(answers), // Usando checklist em vez de answers
           observation: observation || '',
-          ...(uploadedFileId ? { printFileId: uploadedFileId } : {})
+          ...(uploadedFileId ? { printFileId: uploadedFileId } : {}),
+          ...(Object.keys(goalFilesData).length > 0 ? { goalFiles: JSON.stringify(goalFilesData) } : {})
         }
       );
       

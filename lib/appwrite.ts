@@ -124,7 +124,8 @@ export interface Submission {
   date: string;
   checklist: string; // JSON string com as respostas do checklist
   observation?: string;
-  printFileId?: string;
+  printFileId?: string; // Arquivo geral (compatibilidade)
+  goalFiles?: string; // JSON string com arquivos por meta: {goalId: fileId}
   $createdAt: string;
   $updatedAt: string;
 }

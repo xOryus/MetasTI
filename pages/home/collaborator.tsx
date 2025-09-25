@@ -492,7 +492,7 @@ export default function CollaboratorHome() {
         return;
       }
       
-      await createSubmission(profile.$id, combinedAnswers, generalObservation, firstFile);
+      await createSubmission(profile.$id, combinedAnswers, generalObservation, firstFile, goalFiles);
       
       logger.form.success('all-goals');
       toastSuccess('Progresso salvo com sucesso!', 'Sucesso');

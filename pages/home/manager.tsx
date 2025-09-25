@@ -24,6 +24,7 @@ import { logger } from '@/lib/logger';
 import { Role } from '@/lib/roles';
 import { account } from '@/lib/appwrite';
 import { formatCurrency, centavosToReais } from '@/lib/currency';
+import { getFilePreview, getFileDownload } from '@/lib/appwrite';
 import { useSectorGoals } from '@/hooks/useSectorGoals';
 import { calculateUserRewards } from '@/lib/rewards';
 import { useContestations } from '@/hooks/useContestations';
@@ -103,6 +104,19 @@ export default function ManagerDashboard() {
       console.warn('Collection contestations não encontrada:', error);
       return null;
     }
+  };
+
+  // Função para obter arquivo de uma meta específica
+  const getGoalFile = (submission: any, goalId: string) => {
+    try {
+      if (submission.goalFiles) {
+        const goalFiles = JSON.parse(submission.goalFiles);
+        return goalFiles[goalId];
+      }
+    } catch (error) {
+      console.error('Erro ao parsear goalFiles:', error);
+    }
+    return null;
   };
 
   // Carregar metas do setor quando o componente montar
@@ -2147,57 +2161,97 @@ export default function ManagerDashboard() {
                           <div className="space-y-3">
                             {responses.map((response, idx) => {
                               const isContested = isGoalContestedSafe(response.goalId, selectedSubmission.$id);
+                              const goalFileId = getGoalFile(selectedSubmission, response.goalId);
                               
                               return (
-                                <div key={idx} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                                  <div className="flex items-center gap-3">
-                                    <span className="text-2xl">{response.status}</span>
-                                    <div>
-                                      <p className="font-medium text-gray-900">{response.goalName}</p>
-                                      <p className="text-sm text-gray-600">{response.goalType}</p>
-                                      {isContested && (
-                                        <p className="text-xs text-red-600 font-medium mt-1">
-                                          ⚠️ Contestada
-                                        </p>
+                                <div key={idx} className="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                                  <div className="flex items-center justify-between mb-3">
+                                    <div className="flex items-center gap-3">
+                                      <span className="text-2xl">{response.status}</span>
+                                      <div>
+                                        <p className="font-medium text-gray-900">{response.goalName}</p>
+                                        <p className="text-sm text-gray-600">{response.goalType}</p>
+                                        {isContested && (
+                                          <p className="text-xs text-red-600 font-medium mt-1">
+                                            ⚠️ Contestada
+                                          </p>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <Badge 
+                                        variant="outline" 
+                                        className={`px-3 py-1 font-medium ${
+                                          isContested
+                                            ? 'bg-yellow-100 text-yellow-700 border-yellow-300'
+                                            : response.isCompleted 
+                                              ? 'bg-green-100 text-green-700 border-green-300' 
+                                              : 'bg-red-100 text-red-700 border-red-300'
+                                        }`}
+                                      >
+                                        {isContested 
+                                          ? '⚠️ Contestada' 
+                                          : response.isCompleted 
+                                            ? '✅ Concluída' 
+                                            : '❌ Pendente'
+                                        }
+                                      </Badge>
+                                      {!isContested && response.isCompleted && (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          className="text-red-600 border-red-300 hover:bg-red-50"
+                                          onClick={() => {
+                                            setSelectedGoalForContestation({
+                                              goalId: response.goalId,
+                                              goalName: response.goalName,
+                                              goalType: response.goalType
+                                            });
+                                            setIsContestationModalOpen(true);
+                                          }}
+                                        >
+                                          Contestar
+                                        </Button>
                                       )}
                                     </div>
                                   </div>
-                                  <div className="flex items-center gap-2">
-                                    <Badge 
-                                      variant="outline" 
-                                      className={`px-3 py-1 font-medium ${
-                                        isContested
-                                          ? 'bg-yellow-100 text-yellow-700 border-yellow-300'
-                                          : response.isCompleted 
-                                            ? 'bg-green-100 text-green-700 border-green-300' 
-                                            : 'bg-red-100 text-red-700 border-red-300'
-                                      }`}
-                                    >
-                                      {isContested 
-                                        ? '⚠️ Contestada' 
-                                        : response.isCompleted 
-                                          ? '✅ Concluída' 
-                                          : '❌ Pendente'
-                                      }
-                                    </Badge>
-                                    {!isContested && response.isCompleted && (
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        className="text-red-600 border-red-300 hover:bg-red-50"
-                                        onClick={() => {
-                                          setSelectedGoalForContestation({
-                                            goalId: response.goalId,
-                                            goalName: response.goalName,
-                                            goalType: response.goalType
-                                          });
-                                          setIsContestationModalOpen(true);
-                                        }}
-                                      >
-                                        Contestar
-                                      </Button>
-                                    )}
-                                  </div>
+                                  
+                                  {/* Arquivo Comprobatório da Meta */}
+                                  {goalFileId && (
+                                    <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                      <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                          <FileImage className="w-4 h-4 text-blue-600" />
+                                          <span className="text-sm font-medium text-blue-800">
+                                            Arquivo de Comprovação
+                                          </span>
+                                          <Badge variant="outline" className="bg-green-100 text-green-700 border-green-300 text-xs">
+                                            Anexado
+                                          </Badge>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                                            onClick={() => window.open(getFilePreview(goalFileId), '_blank')}
+                                          >
+                                            <Eye className="w-3 h-3 mr-1" />
+                                            Visualizar
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="text-green-600 border-green-300 hover:bg-green-50"
+                                            onClick={() => window.open(getFileDownload(goalFileId), '_blank')}
+                                          >
+                                            <Download className="w-3 h-3 mr-1" />
+                                            Baixar
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                               );
                             })}
