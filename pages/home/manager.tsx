@@ -2288,13 +2288,13 @@ export default function ManagerDashboard() {
                   </div>
                 )}
                 
-                {/* Arquivo Comprobatório */}
-                {selectedSubmission.printFileId && (
+                {/* Arquivo Comprobatório Geral (apenas se não houver arquivos por meta) */}
+                {selectedSubmission.printFileId && !selectedSubmission.goalFiles && (
                   <div className="bg-white rounded-xl shadow-sm border border-gray-200">
                     <div className="p-6 border-b border-gray-100">
                       <h4 className="font-semibold text-gray-800 flex items-center gap-2">
                         <FileImage className="w-5 h-5 text-blue-600" />
-                        Arquivo Comprobatório
+                        Arquivo Comprobatório Geral
                       </h4>
                     </div>
                     <div className="p-6">
@@ -2305,7 +2305,7 @@ export default function ManagerDashboard() {
                               <FileImage className="w-5 h-5 text-blue-600" />
                             </div>
                             <div>
-                              <p className="font-medium text-gray-900">Arquivo de comprovação</p>
+                              <p className="font-medium text-gray-900">Arquivo de comprovação geral</p>
                               <p className="text-sm text-gray-600">ID: {selectedSubmission.printFileId.slice(0, 16)}...</p>
                             </div>
                           </div>
