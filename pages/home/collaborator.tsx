@@ -19,6 +19,8 @@ import { logger } from '@/lib/logger';
 import { formatCurrency, centavosToReais } from '@/lib/currency';
 import { calculateUserRewards, formatPeriodDisplay, calculateDailyRewardValue, type UserRewardStats } from '@/lib/rewards';
 import { useFeedback } from '@/components/FeedbackProvider';
+import { useContestations } from '@/hooks/useContestations';
+import { ContestationNotification } from '@/components/ContestationNotification';
 
 export default function CollaboratorHome() {
   const { isAuthenticated, profile, logout, loading: authLoading } = useAuth();
@@ -26,6 +28,21 @@ export default function CollaboratorHome() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitLoading, setSubmitLoading] = useState(false);
   const { toastSuccess, toastError } = useFeedback();
+  const { contestations, updateContestation, getPendingContestations } = useContestations();
+  
+  // Função para responder contestação
+  const handleRespondToContestation = async (contestationId: string, response: string) => {
+    try {
+      await updateContestation(contestationId, { response });
+      toastSuccess('Resposta enviada com sucesso!');
+    } catch (error) {
+      console.error('Erro ao responder contestação:', error);
+      toastError('Erro ao enviar resposta');
+    }
+  };
+
+  // Buscar contestações pendentes do colaborador
+  const pendingContestations = profile ? getPendingContestations(profile.$id) : [];
   
   // Estados para coleta de dados das metas
   const [individualGoalData, setIndividualGoalData] = useState<Record<string, any>>({});
@@ -631,6 +648,14 @@ export default function CollaboratorHome() {
              </div>
            </div>
          </div>
+       </div>
+
+       {/* Notificações de Contestação */}
+       <div className="w-full px-4 sm:px-6 lg:px-8 pt-4">
+         <ContestationNotification
+           contestations={pendingContestations}
+           onRespond={handleRespondToContestation}
+         />
        </div>
 
              <div className="w-full px-4 sm:px-6 lg:px-8 py-8">

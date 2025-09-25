@@ -29,6 +29,7 @@ export const DATABASE_ID = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID!;
 export const USER_PROFILES_COLLECTION = process.env.NEXT_PUBLIC_APPWRITE_PROFILES_COLLECTION_ID!;
 export const SUBMISSIONS_COLLECTION = process.env.NEXT_PUBLIC_APPWRITE_SUBMISSIONS_COLLECTION_ID!;
 export const SECTOR_GOALS_COLLECTION = process.env.NEXT_PUBLIC_APPWRITE_SECTOR_GOALS_COLLECTION_ID!;
+export const CONTESTATIONS_COLLECTION = process.env.NEXT_PUBLIC_APPWRITE_CONTESTATIONS_COLLECTION_ID!;
 export const PRINTS_BUCKET = process.env.NEXT_PUBLIC_APPWRITE_PRINTS_BUCKET_ID!;
 
 // Enums
@@ -126,6 +127,27 @@ export interface Submission {
   printFileId?: string;
   $createdAt: string;
   $updatedAt: string;
+}
+
+export interface Contestation {
+  $id: string;
+  submissionId: string;
+  goalId: string;
+  collaboratorId: string;
+  managerId: string;
+  reason: string;
+  status: 'pending' | 'resolved' | 'dismissed';
+  createdAt: string;
+  resolvedAt?: string;
+  response?: string;
+}
+
+export interface CreateContestationData {
+  submissionId: string;
+  goalId: string;
+  collaboratorId: string;
+  managerId: string;
+  reason: string;
 }
 
 export interface CreateSectorGoalData {

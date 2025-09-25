@@ -26,6 +26,8 @@ import { account } from '@/lib/appwrite';
 import { formatCurrency, centavosToReais } from '@/lib/currency';
 import { useSectorGoals } from '@/hooks/useSectorGoals';
 import { calculateUserRewards } from '@/lib/rewards';
+import { useContestations } from '@/hooks/useContestations';
+import { ContestationModal } from '@/components/ContestationModal';
 
 // Lazy load dos componentes pesados para melhorar LCP
 const ProofImageViewer = lazy(() => import('@/components/ProofImageViewer'));
@@ -91,6 +93,7 @@ export default function ManagerDashboard() {
 
   const { profiles, loading: profilesLoading } = useAllProfiles();
   const { goals: sectorGoals, loading: goalsLoading, fetchActiveGoalsBySector } = useSectorGoals();
+  const { contestations, createContestation, isGoalContested } = useContestations();
 
   // Carregar metas do setor quando o componente montar
   useEffect(() => {
@@ -122,6 +125,10 @@ export default function ManagerDashboard() {
   const [isSubmissionModalOpen, setIsSubmissionModalOpen] = useState(false);
   const [filteredSubmissions, setFilteredSubmissions] = useState<any[]>([]);
 
+  // Estados para contestação
+  const [isContestationModalOpen, setIsContestationModalOpen] = useState(false);
+  const [selectedGoalForContestation, setSelectedGoalForContestation] = useState<any>(null);
+
   // Estados para funcionalidades avançadas
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
   const [collaboratorRankings, setCollaboratorRankings] = useState<CollaboratorRanking[]>([]);
@@ -129,6 +136,26 @@ export default function ManagerDashboard() {
   
   // Estado para controlar minimização dos alertas
   const [isAlertsMinimized, setIsAlertsMinimized] = useState(false);
+
+  // Função para contestar uma meta específica
+  const handleContestGoal = async (reason: string) => {
+    if (!selectedGoalForContestation || !selectedSubmission || !profile) return;
+
+    try {
+      await createContestation({
+        submissionId: selectedSubmission.$id,
+        goalId: selectedGoalForContestation.goalId,
+        collaboratorId: selectedSubmission.userProfile.$id,
+        managerId: profile.$id,
+        reason: reason
+      });
+      
+      setIsContestationModalOpen(false);
+      setSelectedGoalForContestation(null);
+    } catch (error) {
+      console.error('Erro ao criar contestação:', error);
+    }
+  };
   const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month'>('week');
 
   // Função para calcular desempenho real baseado em metas atingidas
@@ -882,7 +909,7 @@ export default function ManagerDashboard() {
         
         const status = isCompleted ? '✅' : '❌';
         
-        return { status, goalName, isCompleted, goalType };
+        return { status, goalName, isCompleted, goalType, goalId: key };
       }).sort((a, b) => {
         // Ordena: concluídas primeiro, depois por nome
         if (a.isCompleted !== b.isCompleted) {
@@ -2107,27 +2134,62 @@ export default function ManagerDashboard() {
                             Detalhes das Metas
                           </h5>
                           <div className="space-y-3">
-                            {responses.map((response, idx) => (
-                              <div key={idx} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                                <div className="flex items-center gap-3">
-                                  <span className="text-2xl">{response.status}</span>
-                                  <div>
-                                    <p className="font-medium text-gray-900">{response.goalName}</p>
-                                    <p className="text-sm text-gray-600">{response.goalType}</p>
+                            {responses.map((response, idx) => {
+                              const isContested = isGoalContested(response.goalId, selectedSubmission.$id);
+                              
+                              return (
+                                <div key={idx} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                                  <div className="flex items-center gap-3">
+                                    <span className="text-2xl">{response.status}</span>
+                                    <div>
+                                      <p className="font-medium text-gray-900">{response.goalName}</p>
+                                      <p className="text-sm text-gray-600">{response.goalType}</p>
+                                      {isContested && (
+                                        <p className="text-xs text-red-600 font-medium mt-1">
+                                          ⚠️ Contestada
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <Badge 
+                                      variant="outline" 
+                                      className={`px-3 py-1 font-medium ${
+                                        isContested
+                                          ? 'bg-yellow-100 text-yellow-700 border-yellow-300'
+                                          : response.isCompleted 
+                                            ? 'bg-green-100 text-green-700 border-green-300' 
+                                            : 'bg-red-100 text-red-700 border-red-300'
+                                      }`}
+                                    >
+                                      {isContested 
+                                        ? '⚠️ Contestada' 
+                                        : response.isCompleted 
+                                          ? '✅ Concluída' 
+                                          : '❌ Pendente'
+                                      }
+                                    </Badge>
+                                    {!isContested && (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="text-red-600 border-red-300 hover:bg-red-50"
+                                        onClick={() => {
+                                          setSelectedGoalForContestation({
+                                            goalId: response.goalId,
+                                            goalName: response.goalName,
+                                            goalType: response.goalType
+                                          });
+                                          setIsContestationModalOpen(true);
+                                        }}
+                                      >
+                                        Contestar
+                                      </Button>
+                                    )}
                                   </div>
                                 </div>
-                                <Badge 
-                                  variant="outline" 
-                                  className={`px-3 py-1 font-medium ${
-                                    response.isCompleted 
-                                      ? 'bg-green-100 text-green-700 border-green-300' 
-                                      : 'bg-red-100 text-red-700 border-red-300'
-                                  }`}
-                                >
-                                  {response.isCompleted ? '✅ Concluída' : '❌ Pendente'}
-                                </Badge>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         </div>
                       </div>
@@ -2326,6 +2388,19 @@ export default function ManagerDashboard() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Modal: Contestação de Meta */}
+        <ContestationModal
+          isOpen={isContestationModalOpen}
+          onClose={() => {
+            setIsContestationModalOpen(false);
+            setSelectedGoalForContestation(null);
+          }}
+          onSubmit={handleContestGoal}
+          goalTitle={selectedGoalForContestation?.goalName || ''}
+          collaboratorName={selectedSubmission?.userProfile?.name || ''}
+          submissionDate={selectedSubmission ? format(new Date(selectedSubmission.date), 'dd/MM/yyyy') : ''}
+        />
 
       </div>
     </div>
