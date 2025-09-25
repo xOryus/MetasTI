@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { AlertTriangle, MessageSquare, CheckCircle, XCircle } from 'lucide-react';
 import { Contestation } from '@/lib/appwrite';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+// import { ptBR } from 'date-fns/locale';
 import { useFeedback } from '@/components/FeedbackProvider';
 
 interface ContestationNotificationProps {
@@ -96,7 +96,7 @@ export const ContestationNotification: React.FC<ContestationNotificationProps> =
               >
                 <div className="flex-1">
                   <p className="font-medium text-gray-900 text-sm">
-                    Meta contestada em {format(new Date(contestation.createdAt), 'dd/MM/yyyy', { locale: ptBR })}
+                    Meta contestada em {format(new Date(contestation.createdAt), 'dd/MM/yyyy')}
                   </p>
                   <p className="text-xs text-gray-600 truncate">
                     Motivo: {contestation.reason}
@@ -135,7 +135,7 @@ export const ContestationNotification: React.FC<ContestationNotificationProps> =
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-gray-700">Data da Contestação:</span>
                     <span className="text-sm text-gray-900">
-                      {format(new Date(selectedContestation.createdAt), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+                      {format(new Date(selectedContestation.createdAt), 'dd/MM/yyyy HH:mm')}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">

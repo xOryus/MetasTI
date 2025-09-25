@@ -94,6 +94,16 @@ export default function ManagerDashboard() {
   const { profiles, loading: profilesLoading } = useAllProfiles();
   const { goals: sectorGoals, loading: goalsLoading, fetchActiveGoalsBySector } = useSectorGoals();
   const { contestations, createContestation, isGoalContested } = useContestations();
+  
+  // Fallback para quando a collection não existe ainda
+  const isGoalContestedSafe = (goalId: string, submissionId: string) => {
+    try {
+      return isGoalContested(goalId, submissionId);
+    } catch (error) {
+      console.warn('Collection contestations não encontrada:', error);
+      return null;
+    }
+  };
 
   // Carregar metas do setor quando o componente montar
   useEffect(() => {
@@ -154,6 +164,7 @@ export default function ManagerDashboard() {
       setSelectedGoalForContestation(null);
     } catch (error) {
       console.error('Erro ao criar contestação:', error);
+      alert('Erro ao criar contestação. Verifique se a collection foi criada no Appwrite.');
     }
   };
   const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month'>('week');
@@ -2135,7 +2146,7 @@ export default function ManagerDashboard() {
                           </h5>
                           <div className="space-y-3">
                             {responses.map((response, idx) => {
-                              const isContested = isGoalContested(response.goalId, selectedSubmission.$id);
+                              const isContested = isGoalContestedSafe(response.goalId, selectedSubmission.$id);
                               
                               return (
                                 <div key={idx} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
@@ -2169,7 +2180,7 @@ export default function ManagerDashboard() {
                                           : '❌ Pendente'
                                       }
                                     </Badge>
-                                    {!isContested && (
+                                    {!isContested && response.isCompleted && (
                                       <Button
                                         size="sm"
                                         variant="outline"

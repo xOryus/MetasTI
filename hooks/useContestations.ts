@@ -25,7 +25,7 @@ export const useContestations = () => {
         [Query.limit(500)]
       );
       
-      setContestations(response.documents as Contestation[]);
+      setContestations(response.documents as unknown as Contestation[]);
     } catch (err) {
       console.error('Erro ao buscar contestações:', err);
       setError('Erro ao carregar contestações');
@@ -49,7 +49,7 @@ export const useContestations = () => {
         ]
       );
       
-      return response.documents as Contestation[];
+      return response.documents as unknown as Contestation[];
     } catch (err) {
       console.error('Erro ao buscar contestações do colaborador:', err);
       setError('Erro ao carregar contestações');
@@ -74,7 +74,7 @@ export const useContestations = () => {
         ]
       );
       
-      return response.documents as Contestation[];
+      return response.documents as unknown as Contestation[];
     } catch (err) {
       console.error('Erro ao buscar contestações do gestor:', err);
       setError('Erro ao carregar contestações');
@@ -102,9 +102,9 @@ export const useContestations = () => {
       );
       
       // Atualizar lista local
-      setContestations(prev => [response as Contestation, ...prev]);
+      setContestations(prev => [response as unknown as Contestation, ...prev]);
       
-      return response as Contestation;
+      return response as unknown as Contestation;
     } catch (err) {
       console.error('Erro ao criar contestação:', err);
       setError('Erro ao criar contestação');
@@ -137,12 +137,12 @@ export const useContestations = () => {
       setContestations(prev => 
         prev.map(contestation => 
           contestation.$id === contestationId 
-            ? response as Contestation 
+            ? response as unknown as Contestation 
             : contestation
         )
       );
       
-      return response as Contestation;
+      return response as unknown as Contestation;
     } catch (err) {
       console.error('Erro ao atualizar contestação:', err);
       setError('Erro ao atualizar contestação');

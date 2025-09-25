@@ -3,7 +3,7 @@
  * Configura cliente Appwrite com autenticação e serviços de banco/storage
  */
 
-import { Client, Account, Databases, Storage, ID } from 'appwrite';
+import { Client, Account, Databases, Storage, ID, Query } from 'appwrite';
 import { Role } from './roles';
 
 // Validação das variáveis de ambiente
@@ -180,4 +180,4 @@ export const getFileDownload = (fileId: string): string => {
   return `${process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT}/storage/buckets/${PRINTS_BUCKET}/files/${fileId}/download?project=${process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID}`;
 };
 
-export { ID };
+export { ID, Query };
