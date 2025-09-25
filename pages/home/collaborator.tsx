@@ -33,7 +33,10 @@ export default function CollaboratorHome() {
   // Função para responder contestação
   const handleRespondToContestation = async (contestationId: string, response: string) => {
     try {
-      await updateContestation(contestationId, { response });
+      await updateContestation(contestationId, { 
+        collaboratorResponse: response,
+        updatedAt: new Date().toISOString()
+      });
       toastSuccess('Resposta enviada com sucesso!');
     } catch (error) {
       console.error('Erro ao responder contestação:', error);

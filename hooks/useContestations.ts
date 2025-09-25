@@ -117,7 +117,7 @@ export const useContestations = () => {
   // Atualizar contestação (resolver, dispensar ou responder)
   const updateContestation = async (
     contestationId: string, 
-    updates: Partial<Pick<Contestation, 'status' | 'response' | 'resolvedAt'>>
+    updates: Partial<Pick<Contestation, 'status' | 'response' | 'resolvedAt' | 'collaboratorResponse' | 'updatedAt'>>
   ) => {
     try {
       setLoading(true);
