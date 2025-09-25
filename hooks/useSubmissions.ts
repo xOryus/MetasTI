@@ -103,11 +103,11 @@ export function useSubmissions() {
     answers: Record<string, boolean>,
     observation: string,
     printFile?: File,
-    goalFiles?: Record<string, File>
+    goalFiles?: Record<string, File | File[] | FileList>
   ) => {
     try {
       let uploadedFileId: string | undefined = undefined;
-      let goalFilesData: Record<string, string> = {};
+      let goalFilesData: Record<string, string[]> = {};
 
       // Upload arquivo geral (compatibilidade)
       if (printFile) {
@@ -121,33 +121,67 @@ export function useSubmissions() {
 
       // Upload arquivos por meta
       if (goalFiles && Object.keys(goalFiles).length > 0) {
-        for (const [goalId, file] of Object.entries(goalFiles)) {
+        for (const [goalId, filesOrSingle] of Object.entries(goalFiles)) {
           try {
-            const uploadResponse = await storage.createFile(
-              PRINTS_BUCKET,
-              ID.unique(),
-              file
-            );
-            goalFilesData[goalId] = uploadResponse.$id;
+            const files: File[] = Array.isArray(filesOrSingle)
+              ? filesOrSingle
+              : (filesOrSingle as FileList)?.length !== undefined
+                ? Array.from(filesOrSingle as FileList)
+                : [filesOrSingle as File];
+
+            const uploadedIds: string[] = [];
+            for (const f of files) {
+              const uploadResponse = await storage.createFile(
+                PRINTS_BUCKET,
+                ID.unique(),
+                f
+              );
+              uploadedIds.push(uploadResponse.$id);
+            }
+            if (uploadedIds.length > 0) {
+              goalFilesData[goalId] = uploadedIds;
+            }
           } catch (error) {
             console.error(`Erro ao fazer upload do arquivo da meta ${goalId}:`, error);
           }
         }
       }
 
-      const submission = await databases.createDocument(
-        DATABASE_ID,
-        SUBMISSIONS_COLLECTION,
-        ID.unique(),
-        {
-          userProfile: userProfileId,
-          date: new Date().toISOString(),
-          checklist: JSON.stringify(answers), // Usando checklist em vez de answers
-          observation: observation || '',
-          ...(uploadedFileId ? { printFileId: uploadedFileId } : {}),
-          ...(Object.keys(goalFilesData).length > 0 ? { goalFiles: JSON.stringify(goalFilesData) } : {})
+      let submission;
+      try {
+        submission = await databases.createDocument(
+          DATABASE_ID,
+          SUBMISSIONS_COLLECTION,
+          ID.unique(),
+          {
+            userProfile: userProfileId,
+            date: new Date().toISOString(),
+            checklist: JSON.stringify(answers), // Usando checklist em vez de answers
+            observation: observation || '',
+            ...(uploadedFileId ? { printFileId: uploadedFileId } : {}),
+            ...(Object.keys(goalFilesData).length > 0 ? { goalFiles: JSON.stringify(goalFilesData) } : {})
+          }
+        );
+      } catch (err: any) {
+        // Fallback quando a collection ainda não tem o atributo goalFiles
+        const message = err?.message || '';
+        if (message.includes('Unknown attribute') && message.includes('goalFiles')) {
+          submission = await databases.createDocument(
+            DATABASE_ID,
+            SUBMISSIONS_COLLECTION,
+            ID.unique(),
+            {
+              userProfile: userProfileId,
+              date: new Date().toISOString(),
+              checklist: JSON.stringify(answers),
+              observation: observation || '',
+              ...(uploadedFileId ? { printFileId: uploadedFileId } : {})
+            }
+          );
+        } else {
+          throw err;
         }
-      );
+      }
       
       // Re-fetch para atualizar a lista
       await fetchSubmissions();

@@ -107,17 +107,20 @@ export default function ManagerDashboard() {
     }
   };
 
-  // Função para obter arquivo de uma meta específica
-  const getGoalFile = (submission: any, goalId: string) => {
+  // Função para obter arquivos de uma meta específica (suporta 1+ arquivos)
+  const getGoalFiles = (submission: any, goalId: string): string[] => {
     try {
       if (submission.goalFiles) {
         const goalFiles = JSON.parse(submission.goalFiles);
-        return goalFiles[goalId];
+        const value = goalFiles[goalId];
+        if (!value) return [];
+        if (Array.isArray(value)) return value as string[];
+        if (typeof value === 'string') return [value];
       }
     } catch (error) {
       console.error('Erro ao parsear goalFiles:', error);
     }
-    return null;
+    return [];
   };
 
   // Carregar metas do setor quando o componente montar
@@ -664,11 +667,11 @@ export default function ManagerDashboard() {
         const previousDayEnd = endOfDay(previousDate);
         
         const previousDaySubmissions = submissions.filter(s => {
-          const submissionDate = new Date(s.date);
+        const submissionDate = new Date(s.date);
           return submissionDate >= previousDayStart && 
                  submissionDate <= previousDayEnd &&
-                 sectorCollaborators.some(collab => collab.$id === s.userProfile.$id);
-        });
+               sectorCollaborators.some(collab => collab.$id === s.userProfile.$id);
+      });
 
         const previousCompletionRate = sectorCollaborators.length > 0 ? 
           Math.round((previousDaySubmissions.length / sectorCollaborators.length) * 100) : 0;
@@ -976,15 +979,15 @@ export default function ManagerDashboard() {
               goalName = 'Meta não encontrada';
               goalType = 'Meta Individual';
             }
-          } else {
-            // Limpar e formatar nomes de checklist
-            goalName = key
-              .replace(/^.*-/, '') // Remove prefixos com hífen
-              .replace(/_/g, ' ') // Substitui underscores por espaços
-              .replace(/([A-Z])/g, ' $1') // Adiciona espaço antes de maiúsculas
-              .trim()
-              .toLowerCase()
-              .replace(/\b\w/g, l => l.toUpperCase()); // Capitaliza primeira letra de cada palavra
+        } else {
+          // Limpar e formatar nomes de checklist
+          goalName = key
+            .replace(/^.*-/, '') // Remove prefixos com hífen
+            .replace(/_/g, ' ') // Substitui underscores por espaços
+            .replace(/([A-Z])/g, ' $1') // Adiciona espaço antes de maiúsculas
+            .trim()
+            .toLowerCase()
+            .replace(/\b\w/g, l => l.toUpperCase()); // Capitaliza primeira letra de cada palavra
           }
         }
         
@@ -1234,18 +1237,18 @@ export default function ManagerDashboard() {
               <div className="flex items-center space-x-3">
                 <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
                   <BarChart3 className="w-6 h-6 text-white" />
-                </div>
-                <div>
+              </div>
+              <div>
                   <h1 className="text-2xl font-bold text-white">
-                    Dashboard Gerencial - {profile.sector}
-                  </h1>
+                  Dashboard Gerencial - {profile.sector}
+                </h1>
                   <div className="flex items-center space-x-2 text-white/90">
                     <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
                     <p className="text-sm font-medium">
                       Bem-vindo, {profile.name || (profile.role === 'manager' ? 'Gestor' : profile.role)}
-                    </p>
-                  </div>
-                </div>
+                </p>
+              </div>
+            </div>
               </div>
             </div>
             
@@ -1538,16 +1541,16 @@ export default function ManagerDashboard() {
           <div className="xl:col-span-5">
             <Card className="h-full shadow-lg border-0 bg-white overflow-hidden">
               <CardHeader className="pb-4">
-                <CardTitle className="flex items-center gap-3">
+                  <CardTitle className="flex items-center gap-3">
                   <div className="w-1 h-8 bg-gradient-to-b from-yellow-500 to-orange-500 rounded-full"></div>
-                  <div>
-                    <span className="text-xl font-bold text-gray-900">Ranking - {profile.sector}</span>
-                    <p className="text-sm font-normal text-gray-600 mt-1">
+                    <div>
+                      <span className="text-xl font-bold text-gray-900">Ranking - {profile.sector}</span>
+                      <p className="text-sm font-normal text-gray-600 mt-1">
                       Ranking completo de colaboradores por performance
-                    </p>
-                  </div>
-                </CardTitle>
-              </CardHeader>
+                      </p>
+                    </div>
+                  </CardTitle>
+                </CardHeader>
               
                               <CardContent className="p-6">
                   <div className="space-y-4">
@@ -1652,21 +1655,21 @@ export default function ManagerDashboard() {
               <CardHeader className="pb-4">
                 <CardTitle className="flex items-center gap-3">
                   <div className="w-1 h-8 bg-gradient-to-b from-blue-500 via-purple-500 to-indigo-600 rounded-full"></div>
-                  <div>
+                    <div>
                     <span className="text-xl font-bold text-gray-900">Performance & Tendência</span>
-                    <p className="text-sm font-normal text-gray-600 mt-1">
+                      <p className="text-sm font-normal text-gray-600 mt-1">
                       Análise completa de evolução semanal
-                    </p>
-                  </div>
-                </CardTitle>
-              </CardHeader>
+                      </p>
+                    </div>
+                  </CardTitle>
+                </CardHeader>
               <CardContent className="p-6">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between mb-4">
                     <div>
                       <h4 className="text-lg font-semibold text-gray-800">Evolução da Performance</h4>
                       <p className="text-sm text-gray-600">Últimos 7 dias - Taxa de conclusão e tendência</p>
-                    </div>
+              </div>
                     <div className="flex items-center gap-4 text-sm">
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
@@ -1680,11 +1683,11 @@ export default function ManagerDashboard() {
                   </div>
                   
                   <div className="bg-gray-50 rounded-lg p-4">
-                    <Chart 
+                  <Chart 
                       data={performanceTendencia} 
-                      type="line" 
-                      title=""
-                    />
+                    type="line" 
+                    title=""
+                  />
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
@@ -1725,14 +1728,14 @@ export default function ManagerDashboard() {
               <CardHeader className="pb-4">
                 <CardTitle className="flex items-center gap-3">
                   <div className="w-1 h-8 bg-gradient-to-b from-green-500 to-emerald-600 rounded-full"></div>
-                  <div>
+                    <div>
                     <span className="text-xl font-bold text-gray-900">Métricas Avançadas</span>
-                    <p className="text-sm font-normal text-gray-600 mt-1">
+                      <p className="text-sm font-normal text-gray-600 mt-1">
                       Insights detalhados dos colaboradores
-                    </p>
-                  </div>
-                </CardTitle>
-              </CardHeader>
+                      </p>
+                    </div>
+                  </CardTitle>
+                </CardHeader>
               <CardContent className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   
@@ -1742,7 +1745,7 @@ export default function ManagerDashboard() {
                       <div className="flex items-center gap-2">
                         <Users className="w-5 h-5 text-blue-600" />
                         <span className="font-semibold text-gray-800">Status dos Colaboradores</span>
-                      </div>
+              </div>
                     </div>
                                          <div className="space-y-2">
                        {(() => {
@@ -2120,11 +2123,11 @@ export default function ManagerDashboard() {
                 getCollaboratorsNeedingAttention().map((collab, index) => (
                   <div key={collab.id} className="p-4 border border-red-200 rounded-xl bg-gradient-to-r from-red-50 to-orange-50">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
+                              <div className="flex items-center gap-4">
                         <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-red-600 rounded-full flex items-center justify-center text-white font-bold">
-                          {index + 1}
-                        </div>
-                        <div>
+                                  {index + 1}
+                                </div>
+                                <div>
                           <h4 className="font-bold text-gray-900">{collab.name}</h4>
                           <p className="text-sm text-gray-600">Status: {collab.status === 'risk' ? 'Risco' : 'Inativo'}</p>
                         </div>
@@ -2245,58 +2248,58 @@ export default function ManagerDashboard() {
                         </h3>
                         <p className="text-sm text-gray-600">
                           Enviada às {format(new Date(selectedSubmission.date), 'HH:mm')} - ID: {selectedSubmission.$id.slice(0, 12)}...
-                        </p>
-                      </div>
-                    </div>
+                                  </p>
+                                </div>
+                              </div>
                     <Badge variant="outline" className="bg-purple-100 text-purple-700 border-purple-300 px-3 py-1">
                       Submissão Completa
-                    </Badge>
+                              </Badge>
                   </div>
-                </div>
-
-                {/* Resumo das Metas */}
-                {(() => {
+                            </div>
+                            
+                              {/* Resumo das Metas */}
+                              {(() => {
                   const responses = formatChecklistResponses(selectedSubmission.checklist);
-                  if (typeof responses === 'object' && responses.length > 0) {
-                    const completed = responses.filter(r => r.isCompleted).length;
-                    const total = responses.length;
-                    const completionRate = Math.round((completed / total) * 100);
-                    
-                    return (
+                                if (typeof responses === 'object' && responses.length > 0) {
+                                  const completed = responses.filter(r => r.isCompleted).length;
+                                  const total = responses.length;
+                                  const completionRate = Math.round((completed / total) * 100);
+                                  
+                                  return (
                       <div className="bg-white rounded-xl shadow-sm border border-gray-200">
                         <div className="p-6 border-b border-gray-100">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
+                                      <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
                               <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center text-white font-bold">
-                                {completionRate}%
-                              </div>
-                              <div>
+                                            {completionRate}%
+                                          </div>
+                                          <div>
                                 <h4 className="font-bold text-gray-900">Taxa de Conclusão</h4>
-                                <p className="text-sm text-gray-600">{completed} de {total} metas concluídas</p>
-                              </div>
-                            </div>
-                            <div className="text-right">
+                                            <p className="text-sm text-gray-600">{completed} de {total} metas concluídas</p>
+                                          </div>
+                                        </div>
+                                        <div className="text-right">
                               <div className="w-24 h-3 bg-gray-200 rounded-full overflow-hidden">
-                                <div 
+                                            <div 
                                   className="h-full bg-gradient-to-r from-green-500 to-emerald-500 transition-all duration-300"
-                                  style={{ width: `${completionRate}%` }}
-                                ></div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                        
+                                              style={{ width: `${completionRate}%` }}
+                                            ></div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                              
                         <div className="p-6">
                           <h5 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                            <CheckCircle className="w-5 h-5 text-green-600" />
+                                  <CheckCircle className="w-5 h-5 text-green-600" />
                             Detalhes das Metas
                           </h5>
                           <div className="space-y-3">
                             {responses.map((response, idx) => {
                               const isContested = isGoalContestedSafe(response.goalId, selectedSubmission.$id);
-                              const goalFileId = getGoalFile(selectedSubmission, response.goalId);
+                              const goalFileIds = getGoalFiles(selectedSubmission, response.goalId);
                               
-                              return (
+                                      return (
                                 <div key={idx} className="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                                   <div className="flex items-center justify-between mb-3">
                                     <div className="flex items-center gap-3">
@@ -2309,7 +2312,7 @@ export default function ManagerDashboard() {
                                             ⚠️ Contestada
                                           </p>
                                         )}
-                                      </div>
+                                        </div>
                                     </div>
                                     <div className="flex items-center gap-2">
                                       <Badge 
@@ -2349,47 +2352,47 @@ export default function ManagerDashboard() {
                                     </div>
                                   </div>
                                   
-                                  {/* Arquivo Comprobatório da Meta */}
-                                  {goalFileId && (
+                                  {/* Arquivos Comprobatórios da Meta */}
+                                  {goalFileIds.length > 0 && (
                                     <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                                      <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                          <FileImage className="w-4 h-4 text-blue-600" />
-                                          <span className="text-sm font-medium text-blue-800">
-                                            Arquivo de Comprovação
-                                          </span>
-                                          <Badge variant="outline" className="bg-green-100 text-green-700 border-green-300 text-xs">
-                                            Anexado
-                                          </Badge>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                          <Button
-                                            size="sm"
-                                            variant="outline"
-                                            className="text-blue-600 border-blue-300 hover:bg-blue-50"
-                                            onClick={() => window.open(getFilePreview(goalFileId), '_blank')}
-                                          >
-                                            <Eye className="w-3 h-3 mr-1" />
-                                            Visualizar
-                                          </Button>
-                                          <Button
-                                            size="sm"
-                                            variant="outline"
-                                            className="text-green-600 border-green-300 hover:bg-green-50"
-                                            onClick={() => window.open(getFileDownload(goalFileId), '_blank')}
-                                          >
-                                            <Download className="w-3 h-3 mr-1" />
-                                            Baixar
-                                          </Button>
-                                        </div>
+                                      <div className="flex items-center gap-2 mb-2">
+                                        <FileImage className="w-4 h-4 text-blue-600" />
+                                        <span className="text-sm font-medium text-blue-800">
+                                          Arquivos de Comprovação ({goalFileIds.length})
+                                              </span>
+                                            </div>
+                                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                                        {goalFileIds.map((fileId) => (
+                                          <div key={fileId} className="flex items-center justify-between bg-white rounded-md border border-blue-100 px-2 py-1">
+                                            <span className="text-xs text-gray-700 truncate mr-2">ID: {fileId.slice(0, 8)}...</span>
+                                            <div className="flex items-center gap-1">
+                                              <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="h-7 px-2 text-blue-600 border-blue-300 hover:bg-blue-50"
+                                                onClick={() => window.open(getFilePreview(fileId), '_blank')}
+                                              >
+                                                <Eye className="w-3 h-3" />
+                                              </Button>
+                                              <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="h-7 px-2 text-green-600 border-green-300 hover:bg-green-50"
+                                                onClick={() => window.open(getFileDownload(fileId), '_blank')}
+                                              >
+                                                <Download className="w-3 h-3" />
+                                              </Button>
+                                            </div>
+                                          </div>
+                                        ))}
                                       </div>
                                     </div>
                                   )}
-                                </div>
-                              );
+                                      </div>
+                                    );
                             })}
-                          </div>
-                        </div>
+                                </div>
+                              </div>
                       </div>
                     );
                   }
@@ -2407,10 +2410,10 @@ export default function ManagerDashboard() {
                   <div className="bg-white rounded-xl shadow-sm border border-gray-200">
                     <div className="p-6 border-b border-gray-100">
                       <h4 className="font-semibold text-gray-800 flex items-center gap-2">
-                        <FileImage className="w-5 h-5 text-orange-600" />
+                                    <FileImage className="w-5 h-5 text-orange-600" />
                         Observação do Colaborador
                       </h4>
-                    </div>
+                                  </div>
                     <div className="p-6">
                       <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
                         <p className="text-gray-700 leading-relaxed">
@@ -2418,73 +2421,73 @@ export default function ManagerDashboard() {
                         </p>
                       </div>
                     </div>
-                  </div>
-                )}
-                
+                                </div>
+                              )}
+                              
                 {/* Arquivo Comprobatório Geral (apenas se não houver arquivos por meta) */}
                 {selectedSubmission.printFileId && !selectedSubmission.goalFiles && (
                   <div className="bg-white rounded-xl shadow-sm border border-gray-200">
                     <div className="p-6 border-b border-gray-100">
                       <h4 className="font-semibold text-gray-800 flex items-center gap-2">
-                        <FileImage className="w-5 h-5 text-blue-600" />
+                                    <FileImage className="w-5 h-5 text-blue-600" />
                         Arquivo Comprobatório Geral
                       </h4>
-                    </div>
+                                  </div>
                     <div className="p-6">
                       <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
                               <FileImage className="w-5 h-5 text-blue-600" />
-                            </div>
+                                        </div>
                             <div>
                               <p className="font-medium text-gray-900">Arquivo de comprovação geral</p>
                               <p className="text-sm text-gray-600">ID: {selectedSubmission.printFileId.slice(0, 16)}...</p>
-                            </div>
+                                      </div>
                           </div>
                           <Badge variant="outline" className="bg-green-100 text-green-700 border-green-300">
-                            Anexado
+                                        Anexado
                           </Badge>
-                        </div>
-                        
+                                    </div>
+                                    
                         <div className="flex gap-3">
-                          <Button 
-                            variant="outline" 
-                            size="sm"
+                                      <Button 
+                                        variant="outline" 
+                                        size="sm"
                             className="flex-1 bg-blue-50 hover:bg-blue-100 border-blue-300 text-blue-700 hover:text-blue-800"
-                            onClick={() => {
+                                        onClick={() => {
                               const viewUrl = `${process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT}/storage/buckets/${process.env.NEXT_PUBLIC_APPWRITE_PRINTS_BUCKET_ID}/files/${selectedSubmission.printFileId}/view?project=${process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID}`;
-                              window.open(viewUrl, '_blank');
-                            }}
-                          >
-                            <Eye className="w-4 h-4 mr-2" />
-                            Visualizar
-                          </Button>
-                          
-                          <Button 
-                            variant="outline" 
-                            size="sm"
+                                          window.open(viewUrl, '_blank');
+                                        }}
+                                      >
+                                        <Eye className="w-4 h-4 mr-2" />
+                                        Visualizar
+                                      </Button>
+                                      
+                                      <Button 
+                                        variant="outline" 
+                                        size="sm"
                             className="flex-1 bg-green-50 hover:bg-green-100 border-green-300 text-green-700 hover:text-green-800"
-                            onClick={() => {
+                                        onClick={() => {
                               const downloadUrl = `${process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT}/storage/buckets/${process.env.NEXT_PUBLIC_APPWRITE_PRINTS_BUCKET_ID}/files/${selectedSubmission.printFileId}/download?project=${process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID}`;
-                              window.open(downloadUrl, '_blank');
-                            }}
-                          >
-                            <Download className="w-4 h-4 mr-2" />
-                            Baixar
-                          </Button>
-                        </div>
-                        
+                                          window.open(downloadUrl, '_blank');
+                                        }}
+                                      >
+                                        <Download className="w-4 h-4 mr-2" />
+                                        Baixar
+                                      </Button>
+                                    </div>
+                                    
                         <div className="mt-4 pt-4 border-t border-blue-200">
-                          <div className="flex items-center justify-between text-xs text-gray-500">
+                                      <div className="flex items-center justify-between text-xs text-gray-500">
                             <span>Enviado em {format(new Date(selectedSubmission.date), 'dd/MM/yyyy às HH:mm')}</span>
                             <span>ID: {selectedSubmission.printFileId.slice(0, 12)}...</span>
-                          </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
                         </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                      )}
               </div>
             )}
           </DialogContent>
@@ -2540,31 +2543,31 @@ export default function ManagerDashboard() {
                   <div className="space-y-3">
                     {getCollaboratorsWithRewards().map((collaborator, index) => (
                       <div key={collaborator.id} className="p-4 border border-orange-200 rounded-xl bg-gradient-to-r from-orange-50 to-yellow-50">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
                             <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center text-white font-bold">
-                              {index + 1}
-                            </div>
-                            <div>
+                          {index + 1}
+                        </div>
+                        <div>
                               <h4 className="font-bold text-gray-900">{collaborator.name}</h4>
                               <p className="text-sm text-gray-600">
                                 {collaborator.rewardsCount} recompensa{collaborator.rewardsCount > 1 ? 's' : ''} • Última: {collaborator.lastEarned}
                               </p>
-                            </div>
-                          </div>
-                          <div className="text-right">
+                        </div>
+                      </div>
+                      <div className="text-right">
                             <div className="text-2xl font-bold text-orange-600">
                               {formatCurrency(centavosToReais(collaborator.totalEarned))}
-                            </div>
-                            <p className="text-xs text-gray-500">A pagar</p>
-                          </div>
                         </div>
-                        <div className="mt-3 flex items-center gap-4 text-sm text-gray-600">
+                            <p className="text-xs text-gray-500">A pagar</p>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex items-center gap-4 text-sm text-gray-600">
                           <span>💰 Recompensas: {collaborator.rewardsCount}</span>
                           <span>📅 Última: {collaborator.lastEarned}</span>
                           <span>✅ Pendente de pagamento</span>
-                        </div>
-                      </div>
+                    </div>
+                  </div>
                     ))}
                   </div>
 
@@ -2612,7 +2615,7 @@ export default function ManagerDashboard() {
                 Visualize e gerencie todas as contestações de metas dos colaboradores
               </DialogDescription>
             </DialogHeader>
-
+            
             <div className="space-y-6">
               {/* Filtros */}
               <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
@@ -2641,13 +2644,13 @@ export default function ManagerDashboard() {
               </div>
 
               {/* Lista de Contestações */}
-              <div className="space-y-4">
+            <div className="space-y-4">
                 {filteredContestations.length === 0 ? (
-                  <div className="text-center py-8">
+                <div className="text-center py-8">
                     <AlertTriangle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                     <p className="text-gray-500">Nenhuma contestação encontrada</p>
-                  </div>
-                ) : (
+                </div>
+              ) : (
                   filteredContestations.map((contestation) => {
                     const goalDetails = getGoalDetails(contestation.goalId);
                     const submissionDetails = getSubmissionDetails(contestation.submissionId);
@@ -2672,8 +2675,8 @@ export default function ManagerDashboard() {
                                   <p className="text-xs text-gray-500">
                                     Submissão de: {format(new Date(submissionDetails.date), 'dd/MM/yyyy HH:mm')}
                                   </p>
-                                )}
-                              </div>
+                          )}
+                        </div>
                               <Badge 
                                 variant="outline" 
                                 className={`${
@@ -2695,18 +2698,18 @@ export default function ManagerDashboard() {
                                   Detalhes da Meta Contestada
                                 </h5>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                                  <div>
+                        <div>
                                     <span className="text-blue-700 font-medium">Meta:</span>
                                     <p className="text-blue-800 mt-1">{goalDetails.title}</p>
-                                  </div>
+                        </div>
                                   {goalDetails.hasMonetaryReward && goalDetails.monetaryValue && (
                                     <div>
                                       <span className="text-blue-700 font-medium">Recompensa:</span>
                                       <p className="text-blue-800 mt-1">{formatCurrency(centavosToReais(goalDetails.monetaryValue))}</p>
-                                    </div>
+                      </div>
                                   )}
-                                </div>
-                              </div>
+                        </div>
+                      </div>
                             )}
 
                             <div className="bg-red-50 rounded-lg p-4 mb-4 border border-red-200">
@@ -2715,7 +2718,7 @@ export default function ManagerDashboard() {
                                 Motivo da Contestação
                               </h5>
                               <p className="text-red-800">{contestation.reason}</p>
-                            </div>
+                    </div>
 
                             {(() => {
                               const collaboratorReply = (contestation as any).collaboratorResponse || (contestation as any).response;
@@ -2732,7 +2735,7 @@ export default function ManagerDashboard() {
                                   Respondido em: {((contestation as any).updatedAt || (contestation as any).$updatedAt) ?
                                     format(new Date((contestation as any).updatedAt || (contestation as any).$updatedAt), 'dd/MM/yyyy HH:mm') : 'Data não disponível'}
                                 </p>
-                              </div>
+                    </div>
                             )}
 
                             {(!((contestation as any).collaboratorResponse || (contestation as any).response) && contestation.status === 'pending') && (
@@ -2742,7 +2745,7 @@ export default function ManagerDashboard() {
                                   <span className="text-sm font-medium text-yellow-800">
                                     Aguardando resposta do colaborador
                                   </span>
-                                </div>
+                  </div>
                               </div>
                             )}
 
@@ -2778,8 +2781,8 @@ export default function ManagerDashboard() {
                                 <XCircle className="w-4 h-4 mr-1" />
                                 Dispensar
                               </Button>
-                            </div>
-                          )}
+                </div>
+              )}
                         </div>
                       </CardContent>
                     </Card>

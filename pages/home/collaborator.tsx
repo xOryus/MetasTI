@@ -51,7 +51,7 @@ export default function CollaboratorHome() {
   const [individualGoalData, setIndividualGoalData] = useState<Record<string, any>>({});
   const [checklistData, setChecklistData] = useState<Record<string, boolean>>({});
   const [generalObservation, setGeneralObservation] = useState('');
-  const [goalFiles, setGoalFiles] = useState<Record<string, File>>({});
+  const [goalFiles, setGoalFiles] = useState<Record<string, File[]>>({});
   
   const {
     submissions,
@@ -382,10 +382,15 @@ export default function CollaboratorHome() {
     }));
   };
 
-  const updateGoalFile = (goalId: string, file: File) => {
+  const updateGoalFile = (goalId: string, files: File | File[] | FileList) => {
+    const list: File[] = Array.isArray(files)
+      ? files
+      : (files as FileList)?.length !== undefined
+        ? Array.from(files as FileList)
+        : [files as File];
     setGoalFiles(prev => ({
       ...prev,
-      [goalId]: file
+      [goalId]: [...(prev[goalId] || []), ...list]
     }));
   };
 
@@ -467,7 +472,8 @@ export default function CollaboratorHome() {
       });
       
       // Usar o primeiro arquivo encontrado (podemos melhorar isso depois para múltiplos arquivos)
-      const firstFile = Object.values(goalFiles)[0];
+      const firstFileArr = Object.values(goalFiles)[0];
+      const firstFile = Array.isArray(firstFileArr) ? firstFileArr[0] : firstFileArr;
       
       // Verificar se há itens marcados no checklist
       const hasChecklistItems = Object.values(checklistData).some(checked => checked);
@@ -798,7 +804,7 @@ export default function CollaboratorHome() {
                                     )}
                                     <div className="pt-3 border-t border-gray-200">
                                       <label className="block text-sm font-medium text-gray-700 mb-2">Comprovação desta meta {goal.requireProof ? '(obrigatória)' : '(opcional)'}:</label>
-                                      <input type="file" accept="image/*,.pdf,.doc,.docx" className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 file:mr-4 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-sm file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" onChange={(e) => { const file = e.target.files?.[0]; if (file) updateGoalFile(goal.$id!, file); }} />
+                                      <input type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv" className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 file:mr-4 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-sm file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" onChange={(e) => { const files = e.target.files; if (files && files.length > 0) updateGoalFile(goal.$id!, files); }} />
                                       <p className="text-xs text-gray-500 mt-1">Formatos aceitos: Imagens, PDF, DOC, DOCX</p>
                                     </div>
                                   </div>
@@ -886,7 +892,7 @@ export default function CollaboratorHome() {
                                           <label className="block text-sm font-medium text-blue-700">Comprovação para "{item.label}":</label>
                                           <input 
                                             type="file" 
-                                            accept="image/*,.pdf,.doc,.docx" 
+                                            accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv"
                                             className="w-full px-3 py-2 text-sm border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 file:mr-4 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-sm file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" 
                                             onChange={(e) => { 
                                               const file = e.target.files?.[0]; 
