@@ -18,7 +18,8 @@ import { format, subDays, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfM
 import { 
   Users, TrendingUp, Target, Award, BarChart3, Calendar, 
   Activity, PieChart, Trophy, TrendingDown, Eye, FileImage, User, Download,
-  AlertTriangle, Clock, CheckCircle, XCircle, Star, Zap, ChevronDown, ChevronUp, Minimize2, Maximize2
+  AlertTriangle, Clock, CheckCircle, XCircle, Star, Zap, ChevronDown, ChevronUp, Minimize2, Maximize2,
+  MessageSquare, Calendar as CalendarIcon, Filter, Search
 } from 'lucide-react';
 import { logger } from '@/lib/logger';
 import { Role } from '@/lib/roles';
@@ -94,7 +95,7 @@ export default function ManagerDashboard() {
 
   const { profiles, loading: profilesLoading } = useAllProfiles();
   const { goals: sectorGoals, loading: goalsLoading, fetchActiveGoalsBySector } = useSectorGoals();
-  const { contestations, createContestation, isGoalContested } = useContestations();
+  const { contestations, createContestation, updateContestation, isGoalContested } = useContestations();
   
   // Fallback para quando a collection não existe ainda
   const isGoalContestedSafe = (goalId: string, submissionId: string) => {
@@ -152,6 +153,11 @@ export default function ManagerDashboard() {
   // Estados para contestação
   const [isContestationModalOpen, setIsContestationModalOpen] = useState(false);
   const [selectedGoalForContestation, setSelectedGoalForContestation] = useState<any>(null);
+  
+  // Estados para gerenciamento de contestações
+  const [isContestationManagementOpen, setIsContestationManagementOpen] = useState(false);
+  const [selectedContestation, setSelectedContestation] = useState<any>(null);
+  const [contestationFilter, setContestationFilter] = useState<'all' | 'pending' | 'resolved' | 'dismissed'>('all');
 
   // Estados para funcionalidades avançadas
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
@@ -180,6 +186,44 @@ export default function ManagerDashboard() {
       console.error('Erro ao criar contestação:', error);
       alert('Erro ao criar contestação. Verifique se a collection foi criada no Appwrite.');
     }
+  };
+
+  // Função para resolver contestação
+  const handleResolveContestation = async (contestationId: string) => {
+    try {
+      await updateContestation(contestationId, { status: 'resolved' });
+      setSelectedContestation(null);
+    } catch (error) {
+      console.error('Erro ao resolver contestação:', error);
+    }
+  };
+
+  // Função para dispensar contestação
+  const handleDismissContestation = async (contestationId: string) => {
+    try {
+      await updateContestation(contestationId, { status: 'dismissed' });
+      setSelectedContestation(null);
+    } catch (error) {
+      console.error('Erro ao dispensar contestação:', error);
+    }
+  };
+
+  // Filtrar contestações
+  const filteredContestations = contestations.filter(contestation => {
+    if (contestationFilter === 'all') return true;
+    return contestation.status === contestationFilter;
+  });
+
+  // Obter nome do colaborador
+  const getCollaboratorName = (collaboratorId: string) => {
+    const collaborator = profiles.find(p => p.$id === collaboratorId);
+    return collaborator?.name || 'Colaborador não encontrado';
+  };
+
+  // Obter nome da meta
+  const getGoalName = (goalId: string) => {
+    const goal = sectorGoals.find(g => g.$id === goalId);
+    return goal?.title || 'Meta não encontrada';
   };
   const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month'>('week');
 
@@ -1398,6 +1442,83 @@ export default function ManagerDashboard() {
           </div>
         )}
 
+        {/* Gerenciamento de Contestações */}
+        <div className="mb-10">
+          <Card className="shadow-lg border-0 bg-white overflow-hidden">
+            <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-orange-50 to-red-50">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+                    <AlertTriangle className="w-5 h-5 text-orange-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">Gerenciamento de Contestações</h3>
+                    <p className="text-sm text-gray-600">Visualize e gerencie contestações de metas</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Badge variant="outline" className="bg-orange-100 text-orange-700 border-orange-300">
+                    {contestations.filter(c => c.status === 'pending').length} Pendentes
+                  </Badge>
+                  <Button
+                    onClick={() => setIsContestationManagementOpen(true)}
+                    className="bg-orange-600 hover:bg-orange-700 text-white"
+                  >
+                    <AlertTriangle className="w-4 h-4 mr-2" />
+                    Gerenciar Contestações
+                  </Button>
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-red-50 rounded-lg p-4 border border-red-200">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
+                      <AlertTriangle className="w-4 h-4 text-red-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-red-800">Contestações Pendentes</p>
+                      <p className="text-2xl font-bold text-red-900">
+                        {contestations.filter(c => c.status === 'pending').length}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                      <CheckCircle className="w-4 h-4 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-green-800">Resolvidas</p>
+                      <p className="text-2xl font-bold text-green-900">
+                        {contestations.filter(c => c.status === 'resolved').length}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
+                      <XCircle className="w-4 h-4 text-gray-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-800">Dispensadas</p>
+                      <p className="text-2xl font-bold text-gray-900">
+                        {contestations.filter(c => c.status === 'dismissed').length}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Card>
+        </div>
+
         {/* Ranking de Colaboradores e Gráficos - Layout Premium */}
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-10 mb-12">
           
@@ -2466,6 +2587,143 @@ export default function ManagerDashboard() {
           collaboratorName={selectedSubmission?.userProfile?.name || ''}
           submissionDate={selectedSubmission ? format(new Date(selectedSubmission.date), 'dd/MM/yyyy') : ''}
         />
+
+        {/* Modal de Gerenciamento de Contestações */}
+        <Dialog open={isContestationManagementOpen} onOpenChange={setIsContestationManagementOpen}>
+          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-orange-600" />
+                Gerenciamento de Contestações
+              </DialogTitle>
+              <DialogDescription>
+                Visualize e gerencie todas as contestações de metas dos colaboradores
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-6">
+              {/* Filtros */}
+              <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <Filter className="w-4 h-4 text-gray-600" />
+                  <span className="text-sm font-medium text-gray-700">Filtrar por status:</span>
+                </div>
+                <div className="flex gap-2">
+                  {[
+                    { key: 'all', label: 'Todas', count: contestations.length },
+                    { key: 'pending', label: 'Pendentes', count: contestations.filter(c => c.status === 'pending').length },
+                    { key: 'resolved', label: 'Resolvidas', count: contestations.filter(c => c.status === 'resolved').length },
+                    { key: 'dismissed', label: 'Dispensadas', count: contestations.filter(c => c.status === 'dismissed').length }
+                  ].map((filter) => (
+                    <Button
+                      key={filter.key}
+                      variant={contestationFilter === filter.key ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setContestationFilter(filter.key as any)}
+                      className={contestationFilter === filter.key ? 'bg-orange-600 hover:bg-orange-700' : ''}
+                    >
+                      {filter.label} ({filter.count})
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Lista de Contestações */}
+              <div className="space-y-4">
+                {filteredContestations.length === 0 ? (
+                  <div className="text-center py-8">
+                    <AlertTriangle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-500">Nenhuma contestação encontrada</p>
+                  </div>
+                ) : (
+                  filteredContestations.map((contestation) => (
+                    <Card key={contestation.$id} className="border-l-4 border-l-orange-500">
+                      <CardContent className="p-6">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-3">
+                              <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
+                                <AlertTriangle className="w-4 h-4 text-orange-600" />
+                              </div>
+                              <div>
+                                <h4 className="font-semibold text-gray-900">
+                                  {getGoalName(contestation.goalId)}
+                                </h4>
+                                <p className="text-sm text-gray-600">
+                                  Colaborador: {getCollaboratorName(contestation.collaboratorId)}
+                                </p>
+                              </div>
+                              <Badge 
+                                variant="outline" 
+                                className={`${
+                                  contestation.status === 'pending' ? 'bg-yellow-100 text-yellow-700 border-yellow-300' :
+                                  contestation.status === 'resolved' ? 'bg-green-100 text-green-700 border-green-300' :
+                                  'bg-gray-100 text-gray-700 border-gray-300'
+                                }`}
+                              >
+                                {contestation.status === 'pending' ? 'Pendente' :
+                                 contestation.status === 'resolved' ? 'Resolvida' : 'Dispensada'}
+                              </Badge>
+                            </div>
+
+                            <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                              <h5 className="font-medium text-gray-900 mb-2">Motivo da Contestação:</h5>
+                              <p className="text-gray-700">{contestation.reason}</p>
+                            </div>
+
+                            {contestation.collaboratorResponse && (
+                              <div className="bg-blue-50 rounded-lg p-4 mb-4">
+                                <h5 className="font-medium text-gray-900 mb-2">Resposta do Colaborador:</h5>
+                                <p className="text-gray-700">{contestation.collaboratorResponse}</p>
+                                <p className="text-xs text-gray-500 mt-2">
+                                  Respondido em: {contestation.updatedAt ? format(new Date(contestation.updatedAt), 'dd/MM/yyyy HH:mm') : 'Data não disponível'}
+                                </p>
+                              </div>
+                            )}
+
+                            <div className="flex items-center gap-4 text-sm text-gray-500">
+                              <div className="flex items-center gap-1">
+                                <CalendarIcon className="w-4 h-4" />
+                                <span>Criada em: {format(new Date(contestation.createdAt), 'dd/MM/yyyy HH:mm')}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <User className="w-4 h-4" />
+                                <span>ID: {contestation.$id.slice(0, 8)}...</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Ações */}
+                          {contestation.status === 'pending' && (
+                            <div className="flex flex-col gap-2 ml-4">
+                              <Button
+                                size="sm"
+                                onClick={() => handleResolveContestation(contestation.$id)}
+                                className="bg-green-600 hover:bg-green-700 text-white"
+                              >
+                                <CheckCircle className="w-4 h-4 mr-1" />
+                                Resolver
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleDismissContestation(contestation.$id)}
+                                className="text-gray-600 border-gray-300 hover:bg-gray-50"
+                              >
+                                <XCircle className="w-4 h-4 mr-1" />
+                                Dispensar
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
       </div>
     </div>

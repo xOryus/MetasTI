@@ -139,8 +139,10 @@ export interface Contestation {
   reason: string;
   status: 'pending' | 'resolved' | 'dismissed';
   createdAt: string;
+  updatedAt?: string;
   resolvedAt?: string;
   response?: string;
+  collaboratorResponse?: string;
 }
 
 export interface CreateContestationData {
