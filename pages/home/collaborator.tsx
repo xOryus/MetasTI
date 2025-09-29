@@ -32,7 +32,7 @@ export default function CollaboratorHome() {
   const [submitLoading, setSubmitLoading] = useState(false);
   const { toastSuccess, toastError } = useFeedback();
   const { contestations, updateContestation, getPendingContestations } = useContestations();
-  const { fetchComplimentsForUser, compliments } = useCompliments();
+  const { fetchComplimentsForUser, compliments, markComplimentsAsRead } = useCompliments();
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   
   // Função para responder contestação
@@ -575,7 +575,8 @@ export default function CollaboratorHome() {
     }
   }, [compliments, toastSuccess]);
 
-  const notificationsCount = (compliments?.length || 0) + (pendingContestations?.length || 0);
+  const unreadComplimentsCount = compliments?.filter(c => !c.isRead).length || 0;
+  const notificationsCount = unreadComplimentsCount + (pendingContestations?.length || 0);
 
   // Calcular estatísticas pessoais com base nos dados reais
   const personalStats = useMemo(() => {
@@ -664,7 +665,12 @@ export default function CollaboratorHome() {
               {/* Sino de notificações */}
               <button
                 className="relative inline-flex items-center justify-center w-10 h-10 rounded-full bg-white/10 border border-white/20 hover:bg-white/20"
-                onClick={() => setIsNotificationsOpen(true)}
+                onClick={() => {
+                  setIsNotificationsOpen(true);
+                  if (profile) {
+                    markComplimentsAsRead(profile.$id);
+                  }
+                }}
                 aria-label="Notificações"
               >
                 <Bell className="w-5 h-5 text-white" />

@@ -161,6 +161,7 @@ export interface Compliment {
   collaboratorId: string; // profileId do colaborador
   message: string; // texto do elogio (pode conter emojis)
   presetKey?: string; // chave do elogio padrão (opcional)
+  isRead?: boolean; // Se o colaborador já visualizou
   $createdAt?: string; // Appwrite gerencia automaticamente
 }
 

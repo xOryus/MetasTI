@@ -32,6 +32,7 @@ export function useCompliments() {
         collaboratorId: data.collaboratorId,
         message: data.message,
         presetKey: data.presetKey || null,
+        isRead: false,
       } as any;
       const doc = await databases.createDocument(DATABASE_ID, COMPLIMENTS_COLLECTION, 'unique()', payload);
       return doc as unknown as Compliment;
@@ -43,12 +44,38 @@ export function useCompliments() {
     }
   }, []);
 
+  const markComplimentsAsRead = useCallback(async (collaboratorId: string) => {
+    try {
+      // Buscar elogios não lidos do colaborador
+      const unreadCompliments = await databases.listDocuments(DATABASE_ID, COMPLIMENTS_COLLECTION, [
+        Query.equal('collaboratorId', collaboratorId),
+        Query.equal('isRead', false),
+        Query.limit(100)
+      ]);
+
+      // Marcar todos como lidos
+      const updatePromises = unreadCompliments.documents.map(doc =>
+        databases.updateDocument(DATABASE_ID, COMPLIMENTS_COLLECTION, doc.$id, { isRead: true })
+      );
+
+      await Promise.all(updatePromises);
+
+      // Atualizar estado local
+      setCompliments(prev => 
+        prev ? prev.map(c => ({ ...c, isRead: true })) : null
+      );
+    } catch (e: any) {
+      console.error('Erro ao marcar elogios como lidos:', e);
+    }
+  }, []);
+
   return {
     loading,
     error,
     compliments,
     fetchComplimentsForUser,
     createCompliment,
+    markComplimentsAsRead,
   };
 }
 
