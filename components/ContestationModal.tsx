@@ -170,3 +170,4 @@ export const ContestationModal: React.FC<ContestationModalProps> = ({
     </Dialog>
   );
 };
+

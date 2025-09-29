@@ -134,7 +134,11 @@ export const calculateDailyRewardValue = (
   // independente do dia de criação da meta.
   switch (period) {
     case GoalPeriod.DAILY: {
-      return monetaryValue;
+      // Metas diárias: o valor total é distribuído pelos dias do mês calendário atual
+      const start = startOfMonth(referenceDate);
+      const end = endOfMonth(referenceDate);
+      const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      return Math.round(monetaryValue / days);
     }
     case GoalPeriod.WEEKLY: {
       return Math.round(monetaryValue / 7);
@@ -241,10 +245,12 @@ export const isGoalAchievedInPeriod = (
     ? (daysAchieved / totalDaysInPeriod) * 100 
     : 0;
 
-  // Para períodos mais longos, considerar atingido se pelo menos 80% dos dias foram cumpridos
-  // Para período diário, precisa de 100%
-  const requiredRate = goal.period === GoalPeriod.DAILY ? 100 : 80;
-  const achieved = completionRate >= requiredRate;
+  // Nova regra de conclusão:
+  // - Diário: precisa atingir TODOS os dias do período (100%)
+  // - Demais períodos (semanal/mensal/...): basta atingir pelo menos 1 dia no período
+  const achieved = goal.period === GoalPeriod.DAILY
+    ? daysAchieved === totalDaysInPeriod
+    : daysAchieved > 0;
 
   // CORREÇÃO: Para metas numéricas, usar o valor total acumulado
   // Para outros tipos, usar a média como antes
@@ -309,15 +315,19 @@ export const calculateUserRewards = (
     // Calcular valor diário e valor ganho
     const dailyValue = calculateDailyRewardValue(goal.monetaryValue!, goal.period, goal.$createdAt!, referenceDate);
     
-    // Para metas numéricas, calcular proporcionalmente ao progresso
+    // Cálculo de ganho conforme regra de período
     let earnedAmount = 0;
-    if (goal.type === 'numeric' && currentValue && currentValue > 0) {
-      // CORREÇÃO: Limitar o valor ganho ao máximo da meta
-      const progressRatio = Math.min(currentValue / goal.targetValue, 1);
-      earnedAmount = Math.round(goal.monetaryValue! * progressRatio);
-    } else {
-      // Para outros tipos, usar dias atingidos
+    if (goal.period === GoalPeriod.DAILY) {
+      // Diário: paga por dia batido dentro do período; valor diário é o total do mês dividido por dias do mês
       earnedAmount = daysAchieved * dailyValue;
+    } else {
+      // Semanal/Mensal/Trimestral/Anual: paga 1x o valor total quando houver ao menos 1 dia atingido no período
+      if (goal.type === 'numeric' && currentValue && currentValue > 0) {
+        const progressRatio = Math.min(currentValue / goal.targetValue, 1);
+        earnedAmount = daysAchieved > 0 ? Math.round(goal.monetaryValue! * progressRatio) : 0;
+      } else {
+        earnedAmount = daysAchieved > 0 ? goal.monetaryValue! : 0;
+      }
     }
 
     const reward: CalculatedReward = {
@@ -343,14 +353,13 @@ export const calculateUserRewards = (
 
     // Adicionar aos totais baseado no valor efetivamente ganho
     if (earnedAmount > 0) {
-      // Verificar se a recompensa já foi "paga" (período já passou)
-      // Disponibilidade e pendência:
-      // - totalAvailableRewards: orçamento total das metas com recompensa
-      // - totalPendingRewards: valor ganho cujo período já terminou (a pagar)
       const isPeriodCompleted = referenceDate > periodInterval.end;
       if (isPeriodCompleted) totalPendingRewards += earnedAmount;
 
-      // Contabilizar recompensas por período de referência usando sobreposição
+      // Distribuição dos ganhos conforme recorte de referência:
+      // - Para metas diárias: ganhos podem cair em Today/Week/Month proporcionalmente por dia
+      //   (já que earnedAmount já é a soma diária do período atual, contamos no mês/semana/dia se sobrepor)
+      // - Para metas não diárias: o ganho é 1x no período; se o período sobrepõe o mês/semana/hoje, contamos integralmente
       if (doPeriodsOverlap(periodInterval, monthInterval)) {
         totalEarnedThisMonth += earnedAmount;
       }
@@ -360,7 +369,14 @@ export const calculateUserRewards = (
       }
 
       if (doPeriodsOverlap(periodInterval, todayInterval)) {
-        totalEarnedToday += earnedAmount;
+        if (goal.period === GoalPeriod.DAILY) {
+          // Aproximação: considerar apenas 1 dia do valor diário quando há sobreposição com hoje
+          totalEarnedToday += Math.min(dailyValue, earnedAmount);
+        } else {
+          // Para não diárias, quando há qualquer dia hoje dentro do período, exibimos 0 para Today
+          // pois o pagamento é 1x no período e não fracionamos por dia para Today.
+          // Mantemos 0 aqui para evitar percepção de pagamento diário em metas mensais.
+        }
       }
     }
   }
