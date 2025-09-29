@@ -1546,6 +1546,90 @@ export default function ManagerDashboard() {
           </Card>
         </div>
 
+        {/* Elogios - Card destacado */}
+        <div className="mb-12">
+          <Card className="shadow-lg border-0 bg-white">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center gap-3">
+                <div className="w-1 h-8 bg-gradient-to-b from-green-500 to-emerald-500 rounded-full"></div>
+                <div>
+                  <span className="text-xl font-bold text-gray-900">Elogios para colaboradores</span>
+                  <p className="text-sm font-normal text-gray-600 mt-1">Envie um elogio padrão ou personalizado</p>
+                </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {collaboratorRankings.map((item, index) => (
+                  <div key={item.id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center font-semibold text-gray-700">
+                        {index + 1}
+                      </div>
+                      <div>
+                        <div className="font-medium">{item.name}</div>
+                        <div className="text-xs text-gray-500">{item.completionRate}%</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <select
+                        className="text-sm border rounded px-2 py-1"
+                        value={sendingComplimentTo === item.id ? selectedPreset : ''}
+                        onChange={(e) => {
+                          setSendingComplimentTo(item.id);
+                          setSelectedPreset(e.target.value);
+                        }}
+                      >
+                        <option value="">Elogio padrão</option>
+                        {complimentPresets.map(p => (
+                          <option key={p.key} value={p.key}>{p.label}</option>
+                        ))}
+                      </select>
+                      <input
+                        type="text"
+                        className="text-sm border rounded px-2 py-1"
+                        placeholder="Mensagem personalizada"
+                        value={sendingComplimentTo === item.id ? customCompliment : ''}
+                        onChange={(e) => {
+                          setSendingComplimentTo(item.id);
+                          setCustomCompliment(e.target.value);
+                        }}
+                        style={{ width: 220 }}
+                      />
+                      <Button
+                        size="sm"
+                        onClick={async () => {
+                          try {
+                            const preset = complimentPresets.find(p => p.key === selectedPreset);
+                            const message = (customCompliment && sendingComplimentTo === item.id)
+                              ? customCompliment
+                              : (preset?.label || '👏 Excelente trabalho!');
+                            if (!profile) return;
+                            await createCompliment({
+                              managerId: profile.$id,
+                              collaboratorId: item.id,
+                              message,
+                              presetKey: preset?.key,
+                            });
+                            setSelectedPreset('');
+                            setCustomCompliment('');
+                            setSendingComplimentTo('');
+                            toastSuccess('Elogio enviado!', 'Sucesso');
+                          } catch (e: any) {
+                            toastError(e.message || 'Falha ao enviar elogio');
+                          }
+                        }}
+                      >
+                        Enviar elogio
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
         {/* Ranking de Colaboradores e Gráficos - Layout Premium */}
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-10 mb-12">
           
