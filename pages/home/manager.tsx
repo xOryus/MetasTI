@@ -1641,13 +1641,15 @@ export default function ManagerDashboard() {
           <div className="xl:col-span-5">
             <Card className="h-full shadow-lg border-0 bg-white overflow-hidden">
               <CardHeader className="pb-4">
-                  <CardTitle className="flex items-center gap-3 justify-between">
-                  <div className="w-1 h-8 bg-gradient-to-b from-yellow-500 to-orange-500 rounded-full"></div>
-                    <div>
-                      <span className="text-xl font-bold text-gray-900">Ranking - {profile.sector}</span>
-                      <p className="text-sm font-normal text-gray-600 mt-1">
-                      Ranking completo de colaboradores por performance
-                      </p>
+                  <CardTitle className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-1 h-8 bg-gradient-to-b from-yellow-500 to-orange-500 rounded-full"></div>
+                      <div>
+                        <span className="text-xl font-bold text-gray-900">Ranking - {profile.sector}</span>
+                        <p className="text-sm font-normal text-gray-600 mt-1">
+                        Ranking completo de colaboradores por performance
+                        </p>
+                      </div>
                     </div>
                     <div>
                       <Button

@@ -723,7 +723,7 @@ export default function CollaboratorHome() {
                   compliments.map((c) => (
                     <div key={c.$id} className="p-3 rounded border bg-green-50 border-green-200">
                       <div className="text-sm font-medium">{c.message}</div>
-                      <div className="text-xs text-gray-600 mt-1">Recebido em {new Date(c.createdAt || (c as any).$createdAt || Date.now()).toLocaleString()}</div>
+                      <div className="text-xs text-gray-600 mt-1">Recebido em {new Date((c as any).$createdAt || Date.now()).toLocaleString()}</div>
                     </div>
                   ))
                 ) : (
