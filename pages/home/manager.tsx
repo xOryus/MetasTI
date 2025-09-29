@@ -30,6 +30,8 @@ import { useSectorGoals } from '@/hooks/useSectorGoals';
 import { calculateUserRewards } from '@/lib/rewards';
 import { useContestations } from '@/hooks/useContestations';
 import { ContestationModal } from '@/components/ContestationModal';
+import { useCompliments } from '@/hooks/useCompliments';
+import { useFeedback } from '@/components/FeedbackProvider';
 
 // Lazy load dos componentes pesados para melhorar LCP
 const ProofImageViewer = lazy(() => import('@/components/ProofImageViewer'));
@@ -96,6 +98,16 @@ export default function ManagerDashboard() {
   const { profiles, loading: profilesLoading } = useAllProfiles();
   const { goals: sectorGoals, loading: goalsLoading, fetchActiveGoalsBySector } = useSectorGoals();
   const { contestations, createContestation, updateContestation, isGoalContested } = useContestations();
+  const { createCompliment } = useCompliments();
+  const complimentPresets = [
+    { key: 'parabens', label: '🎉 Parabéns pelo excelente trabalho!' },
+    { key: 'otimo', label: '👏 Ótimo desempenho hoje!' },
+    { key: 'exemplo', label: '🌟 Você é um exemplo para o time!' },
+  ];
+  const [selectedPreset, setSelectedPreset] = useState<string>('');
+  const [customCompliment, setCustomCompliment] = useState<string>('');
+  const [sendingComplimentTo, setSendingComplimentTo] = useState<string>('');
+  const { toastSuccess, toastError } = useFeedback();
   
   // Fallback para quando a collection não existe ainda
   const isGoalContestedSafe = (goalId: string, submissionId: string) => {

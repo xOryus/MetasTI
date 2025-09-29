@@ -14,13 +14,16 @@ import { useAuth } from '@/hooks/useAuth';
 import { useSubmissions } from '@/hooks/useSubmissions';
 import { useSectorGoals } from '@/hooks/useSectorGoals';
 import { format, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isWithinInterval, isSameDay } from 'date-fns';
-import { Target, TrendingUp, Calendar, Award } from 'lucide-react';
+import { Target, TrendingUp, Calendar, Award, Bell } from 'lucide-react';
 import { logger } from '@/lib/logger';
 import { formatCurrency, centavosToReais } from '@/lib/currency';
 import { calculateUserRewards, formatPeriodDisplay, calculateDailyRewardValue, type UserRewardStats } from '@/lib/rewards';
 import { useFeedback } from '@/components/FeedbackProvider';
 import { useContestations } from '@/hooks/useContestations';
 import { ContestationNotification } from '@/components/ContestationNotification';
+import { useCompliments } from '@/hooks/useCompliments';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
 
 export default function CollaboratorHome() {
   const { isAuthenticated, profile, logout, loading: authLoading } = useAuth();
@@ -29,6 +32,8 @@ export default function CollaboratorHome() {
   const [submitLoading, setSubmitLoading] = useState(false);
   const { toastSuccess, toastError } = useFeedback();
   const { contestations, updateContestation, getPendingContestations } = useContestations();
+  const { fetchComplimentsForUser, compliments } = useCompliments();
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   
   // Função para responder contestação
   const handleRespondToContestation = async (contestationId: string, response: string) => {
@@ -554,6 +559,24 @@ export default function CollaboratorHome() {
     }
   };
 
+  // Elogios: buscar e mostrar como toasts ao carregar
+  useEffect(() => {
+    if (profile) {
+      fetchComplimentsForUser(profile.$id);
+    }
+  }, [profile, fetchComplimentsForUser]);
+
+  useEffect(() => {
+    if (compliments && compliments.length > 0) {
+      // Mostrar apenas os mais recentes (até 3) como pop-ups bonitos
+      compliments.slice(0, 3).forEach((c) => {
+        toastSuccess(c.message, 'Elogio do Gestor');
+      });
+    }
+  }, [compliments, toastSuccess]);
+
+  const notificationsCount = (compliments?.length || 0) + (pendingContestations?.length || 0);
+
   // Calcular estatísticas pessoais com base nos dados reais
   const personalStats = useMemo(() => {
     const thisWeekCompletion = calculateWeeklyCompletion(startOfWeek(new Date()));
@@ -614,7 +637,7 @@ export default function CollaboratorHome() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-             {/* Header */}
+      {/* Header */}
        <div className="bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-800 shadow-lg">
          <div className="w-full px-4 sm:px-6 lg:px-8">
            <div className="flex justify-between items-center py-6">
@@ -623,21 +646,35 @@ export default function CollaboratorHome() {
                  <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
                    <Target className="w-6 h-6 text-white" />
                  </div>
-                 <div>
+            <div>
                    <h1 className="text-2xl font-bold text-white">
-                     Meu Checklist - {profile.sector}
-                   </h1>
+                Meu Checklist - {profile.sector}
+              </h1>
                    <div className="flex items-center space-x-2 text-blue-100">
                      <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
                      <p className="text-sm font-medium">
                        Bem-vindo, {profile.name || (profile.role === 'collaborator' ? 'Colaborador' : profile.role)}
-                     </p>
-                   </div>
+              </p>
+            </div>
                  </div>
                </div>
              </div>
              
-             <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-3">
+              {/* Sino de notificações */}
+              <button
+                className="relative inline-flex items-center justify-center w-10 h-10 rounded-full bg-white/10 border border-white/20 hover:bg-white/20"
+                onClick={() => setIsNotificationsOpen(true)}
+                aria-label="Notificações"
+              >
+                <Bell className="w-5 h-5 text-white" />
+                {notificationsCount > 0 && (
+                  <span className="absolute -top-1 -right-1 px-2 py-0.5 text-xs rounded-full bg-red-500 text-white">
+                    {notificationsCount}
+                  </span>
+                )}
+              </button>
+
                <div className="hidden sm:flex items-center space-x-2 text-blue-100">
                  <div className="w-2 h-2 bg-blue-300 rounded-full"></div>
                  <span className="text-sm font-medium">
@@ -653,11 +690,11 @@ export default function CollaboratorHome() {
                    <div className="w-4 h-4 bg-white/20 rounded-full"></div>
                    <span>Sair</span>
                  </div>
-               </Button>
+            </Button>
              </div>
-           </div>
-         </div>
-       </div>
+          </div>
+        </div>
+      </div>
 
        {/* Notificações de Contestação */}
        <div className="w-full px-4 sm:px-6 lg:px-8 pt-4">
@@ -667,14 +704,66 @@ export default function CollaboratorHome() {
          />
        </div>
 
+      {/* Modal de Notificações */}
+      <Dialog open={isNotificationsOpen} onOpenChange={setIsNotificationsOpen}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Notificações</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-6">
+            {/* Elogios */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="font-semibold">Elogios</h4>
+                <Badge variant="outline">{compliments?.length || 0}</Badge>
+              </div>
+              <div className="space-y-2 max-h-64 overflow-auto pr-1">
+                {(compliments && compliments.length > 0) ? (
+                  compliments.map((c) => (
+                    <div key={c.$id} className="p-3 rounded border bg-green-50 border-green-200">
+                      <div className="text-sm font-medium">{c.message}</div>
+                      <div className="text-xs text-gray-600 mt-1">Recebido em {new Date(c.createdAt || (c as any).$createdAt || Date.now()).toLocaleString()}</div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-sm text-gray-500">Nenhum elogio no momento.</div>
+                )}
+              </div>
+            </div>
+
+            {/* Contestações pendentes */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="font-semibold">Contestações pendentes</h4>
+                <Badge variant="outline">{pendingContestations.length}</Badge>
+              </div>
+              <div className="space-y-2 max-h-64 overflow-auto pr-1">
+                {pendingContestations.length > 0 ? (
+                  pendingContestations.map((ct) => (
+                    <div key={ct.$id} className="p-3 rounded border bg-yellow-50 border-yellow-200">
+                      <div className="text-sm font-medium">Sua meta foi contestada</div>
+                      <div className="text-xs text-gray-600 mt-1">Motivo: {ct.reason || 'Sem motivo informado'}</div>
+                      <div className="text-xs text-gray-600">Status: {ct.status}</div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-sm text-gray-500">Nenhuma contestação pendente.</div>
+                )}
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
              <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
                   <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-           
-           {/* Checklist Principal */}
+          
+          {/* Checklist Principal */}
            <div className="md:col-span-2 lg:col-span-1 xl:col-span-2 space-y-6">
              
              {/* Seção Principal - Checklist */}
-             <Card className="shadow-lg border-0 bg-white">
+            <Card className="shadow-lg border-0 bg-white">
               <CardHeader className="pb-4">
                 <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-3">
                   <div className="w-1 h-8 bg-gradient-to-b from-blue-500 to-blue-600 rounded-full"></div>
@@ -719,35 +808,35 @@ export default function CollaboratorHome() {
                                   ? 'border-green-200 bg-green-50' 
                                   : 'border-gray-200'
                               }`}>
-                                <CardHeader className="pb-3">
+                        <CardHeader className="pb-3">
                                   <div className="flex items-center justify-between">
                                     <CardTitle className={`text-lg font-semibold ${
                                       isCompleted ? 'text-green-800' : 'text-gray-800'
                                     }`}>
-                                      {goal.title}
+                            {goal.title}
                                       {isCompleted && (
                                         <span className="ml-2 text-sm text-green-600">✅</span>
                                       )}
-                                    </CardTitle>
+                          </CardTitle>
                                   </div>
                                   <p className={`text-sm ${
                                     isCompleted ? 'text-green-600' : 'text-gray-600'
                                   }`}>{goal.description}</p>
-                                  <div className="flex items-center gap-2 text-xs text-gray-500">
+                          <div className="flex items-center gap-2 text-xs text-gray-500">
                                     <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full">{goal.type === 'numeric' ? 'Numérico' : goal.type === 'percentage' ? 'Porcentagem' : goal.type === 'task_completion' ? 'Tarefa' : goal.type}</span>
                                     {(goal.type === 'numeric' || goal.type === 'percentage') && (<span>Meta: {goal.targetValue}{goal.type === 'percentage' ? '%' : ''}</span>)}
-                                    {goal.hasMonetaryReward && goal.monetaryValue && (
-                                      <div className="flex flex-col gap-1">
+                            {goal.hasMonetaryReward && goal.monetaryValue && (
+                              <div className="flex flex-col gap-1">
                                         <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full font-medium text-xs">💰 {formatCurrency(centavosToReais(goal.monetaryValue))} - {formatPeriodDisplay(goal.period)}</span>
                                         <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full font-medium text-xs">Diário: {formatCurrency(centavosToReais(calculateDailyRewardValue(goal.monetaryValue, goal.period, goal.$createdAt!)))}</span>
-                                      </div>
-                                    )}
-                                  </div>
-                                </CardHeader>
-                                <CardContent>
-                                  <div className="space-y-4">
-                                    {goal.type === 'numeric' && (
-                                      <div className="space-y-3">
+                              </div>
+                            )}
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-4">
+                            {goal.type === 'numeric' && (
+                              <div className="space-y-3">
                                         <label className="block text-sm font-medium text-gray-700">Valor Atual:</label>
                                         
                                         {/* Mostrar progresso atual */}
@@ -778,38 +867,38 @@ export default function CollaboratorHome() {
                                           );
                                         })()}
                                         
-                                        <input 
-                                          type="number" 
-                                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" 
-                                          placeholder={`Meta: ${goal.targetValue}`} 
-                                          min="0" 
-                                          value={individualGoalData[goal.$id!] || ''} 
-                                          onChange={(e) => updateIndividualGoalData(goal.$id!, parseFloat(e.target.value) || 0)} 
-                                        />
-                                      </div>
-                                    )}
-                                    {goal.type === 'percentage' && (
-                                      <div className="space-y-3">
+                                <input
+                                  type="number"
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  placeholder={`Meta: ${goal.targetValue}`}
+                                  min="0"
+                                  value={individualGoalData[goal.$id!] || ''}
+                                  onChange={(e) => updateIndividualGoalData(goal.$id!, parseFloat(e.target.value) || 0)}
+                                />
+                              </div>
+                            )}
+                            {goal.type === 'percentage' && (
+                              <div className="space-y-3">
                                         <label className="block text-sm font-medium text-gray-700">Porcentagem Atual (%):</label>
                                         <input type="number" className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder={`Meta: ${goal.targetValue}%`} min="0" max="100" value={individualGoalData[goal.$id!] || ''} onChange={(e) => updateIndividualGoalData(goal.$id!, parseFloat(e.target.value) || 0)} />
-                                      </div>
-                                    )}
-                                    {goal.type === 'task_completion' && (
-                                      <div className="space-y-3">
-                                        <label className="flex items-center space-x-2">
+                              </div>
+                            )}
+                            {goal.type === 'task_completion' && (
+                              <div className="space-y-3">
+                                <label className="flex items-center space-x-2">
                                           <input type="checkbox" className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" checked={individualGoalData[goal.$id!] || false} onChange={(e) => updateIndividualGoalData(goal.$id!, e.target.checked)} />
-                                          <span className="text-sm text-gray-700">Tarefa concluída</span>
-                                        </label>
-                                      </div>
-                                    )}
-                                    <div className="pt-3 border-t border-gray-200">
+                                  <span className="text-sm text-gray-700">Tarefa concluída</span>
+                                </label>
+                              </div>
+                            )}
+                            <div className="pt-3 border-t border-gray-200">
                                       <label className="block text-sm font-medium text-gray-700 mb-2">Comprovação desta meta {goal.requireProof ? '(obrigatória)' : '(opcional)'}:</label>
                                       <input type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv" className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 file:mr-4 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-sm file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" onChange={(e) => { const files = e.target.files; if (files && files.length > 0) updateGoalFile(goal.$id!, files); }} />
                                       <p className="text-xs text-gray-500 mt-1">Formatos aceitos: Imagens, PDF, DOC, DOCX</p>
-                                    </div>
-                                  </div>
-                                </CardContent>
-                              </Card>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
                             );
                           })}
                         </div>
@@ -848,7 +937,7 @@ export default function CollaboratorHome() {
 
                           return Object.entries(groupedItems).map(([goalId, group]: [string, any]) => (
                             <Card key={goalId} className="border border-blue-200 bg-white shadow-sm">
-                              <CardHeader className="pb-3">
+                        <CardHeader className="pb-3">
                                 <div className="flex items-start gap-3">
                                   <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
                                     <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
@@ -861,19 +950,19 @@ export default function CollaboratorHome() {
                                       <p className="text-sm text-gray-600 mt-1">{group.goalDescription}</p>
                                     )}
                                   </div>
-                                </div>
-                              </CardHeader>
+                          </div>
+                        </CardHeader>
                               <CardContent className="pt-0">
                                 <div className="space-y-3">
                                   {group.items.map((item: any) => (
                                     <div key={item.id} className="space-y-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
                                       <div className="flex items-center space-x-3">
-                                        <input 
-                                          type="checkbox" 
+                                  <input
+                                    type="checkbox"
                                           className="w-5 h-5 text-blue-600 border-blue-300 rounded focus:ring-blue-500" 
-                                          checked={checklistData[item.id] || false} 
-                                          onChange={(e) => updateChecklistData(item.id, e.target.checked)} 
-                                        />
+                                    checked={checklistData[item.id] || false}
+                                    onChange={(e) => updateChecklistData(item.id, e.target.checked)}
+                                  />
                                         <div className="flex-1">
                                           <Label className="text-sm font-medium text-blue-800 cursor-pointer">{item.label}</Label>
                                         </div>
@@ -884,29 +973,29 @@ export default function CollaboratorHome() {
                                             </svg>
                                           </div>
                                         )}
-                                      </div>
-                                      
+                            </div>
+                            
                                       {/* Campo de arquivo para este item */}
                                       {checklistData[item.id] && (
                                         <div className="ml-8 space-y-2">
                                           <label className="block text-sm font-medium text-blue-700">Comprovação para "{item.label}":</label>
-                                          <input 
-                                            type="file" 
+                              <input
+                                type="file"
                                             accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv"
                                             className="w-full px-3 py-2 text-sm border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 file:mr-4 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-sm file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" 
-                                            onChange={(e) => { 
-                                              const file = e.target.files?.[0]; 
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
                                               if (file) updateGoalFile(item.id, file); 
-                                            }} 
-                                          />
+                                }}
+                              />
                                           <p className="text-xs text-blue-600">Formatos aceitos: Imagens, PDF, DOC, DOCX</p>
-                                        </div>
+                            </div>
                                       )}
                                     </div>
                                   ))}
-                                </div>
-                              </CardContent>
-                            </Card>
+                          </div>
+                        </CardContent>
+                      </Card>
                           ));
                         })()}
                       </div>
@@ -921,26 +1010,26 @@ export default function CollaboratorHome() {
                     ) : null}
                     {/* Observações e Envio */}
                     {(individualGoalsWithProgress.length > 0 || checklistItemsWithProgress.length > 0) && (
-                      <Card className="border border-gray-200 bg-gray-50">
-                        <CardHeader>
+                    <Card className="border border-gray-200 bg-gray-50">
+                      <CardHeader>
                           <CardTitle className="text-lg font-semibold text-gray-800">Finalizar Envio</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                          <div>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">Observações Gerais (opcional):</label>
                             <textarea className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" rows={3} placeholder="Adicione observações gerais sobre todas as metas do dia..." value={generalObservation} onChange={(e) => setGeneralObservation(e.target.value)} />
                             <p className="text-xs text-gray-500 mt-1">Use este campo para comentários que se aplicam a todas as metas</p>
-                          </div>
+                        </div>
                           <Button className="w-full" disabled={submitLoading || (checklistItemsWithProgress.length === 0 && individualGoalsWithProgress.length === 0)} onClick={handleSubmit}>
                             {submitLoading ? 'Salvando...' : 'Salvar Progresso'}
-                          </Button>
-                          {submitError && (
-                            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                              <p className="text-red-800 text-sm">{submitError}</p>
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
+                        </Button>
+                        {submitError && (
+                          <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                            <p className="text-red-800 text-sm">{submitError}</p>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
                     )}
                   </div>
                 ) : (
@@ -949,7 +1038,7 @@ export default function CollaboratorHome() {
                       <Target className="w-12 h-12 mx-auto mb-3 text-green-500" />
                       <h3 className="text-lg font-medium text-gray-700 mb-2">Parabéns! Metas do dia concluídas</h3>
                       <p className="text-sm">Você completou todas as metas disponíveis para hoje.</p>
-                    </div>
+                  </div>
                   ) : (
                     <div className="text-center py-8 text-gray-500">
                       <Target className="w-12 h-12 mx-auto mb-3 text-blue-500" />
@@ -1013,65 +1102,65 @@ export default function CollaboratorHome() {
              )}
           </div>
 
-                     {/* Sidebar - Estatísticas Pessoais */}
+          {/* Sidebar - Estatísticas Pessoais */}
            <div className="lg:col-span-2 xl:col-span-2 space-y-8">
-             
-             {/* Stats Cards */}
+            
+            {/* Stats Cards */}
              <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-                             <Card className="shadow-md border-0 bg-gradient-to-br from-blue-50 to-blue-100">
+              <Card className="shadow-md border-0 bg-gradient-to-br from-blue-50 to-blue-100">
                  <CardContent className="p-8 text-center">
                    <Calendar className="w-10 h-10 mx-auto mb-4 text-blue-600" />
                    <div className="text-3xl font-bold text-blue-700">{personalStats.thisWeek}%</div>
                    <div className="text-sm text-blue-600">Esta Semana</div>
-                 </CardContent>
-               </Card>
+                </CardContent>
+              </Card>
 
-                             <Card className="shadow-md border-0 bg-gradient-to-br from-emerald-50 to-emerald-100">
+              <Card className="shadow-md border-0 bg-gradient-to-br from-emerald-50 to-emerald-100">
                  <CardContent className="p-8 text-center">
                    <TrendingUp className="w-10 h-10 mx-auto mb-4 text-emerald-600" />
                    <div className="text-3xl font-bold text-emerald-700">{personalStats.streak}</div>
                    <div className="text-sm text-emerald-600">Dias Seguidos</div>
-                 </CardContent>
-               </Card>
+                </CardContent>
+              </Card>
 
-                             <Card className="shadow-md border-0 bg-gradient-to-br from-green-50 to-green-100">
+              <Card className="shadow-md border-0 bg-gradient-to-br from-green-50 to-green-100">
                  <CardContent className="p-8 text-center">
                    <div className="w-10 h-10 mx-auto mb-4 text-green-600 flex items-center justify-center text-2xl">
-                     💰
-                   </div>
+                    💰
+                  </div>
                    <div className="text-3xl font-bold text-green-700">
-                     {formatCurrency(centavosToReais(rewardStats?.totalEarnedThisMonth || 0))}
-                   </div>
+                    {formatCurrency(centavosToReais(rewardStats?.totalEarnedThisMonth || 0))}
+                  </div>
                    <div className="text-sm text-green-600">Ganho no Mês</div>
-                 </CardContent>
-               </Card>
+                </CardContent>
+              </Card>
 
-                             <Card className="shadow-md border-0 bg-gradient-to-br from-orange-50 to-orange-100">
+              <Card className="shadow-md border-0 bg-gradient-to-br from-orange-50 to-orange-100">
                  <CardContent className="p-8 text-center">
                    <Target className="w-10 h-10 mx-auto mb-4 text-orange-600" />
                    <div className="text-3xl font-bold text-orange-700">{personalStats.lastWeek}%</div>
                    <div className="text-sm text-orange-600">Semana Passada</div>
-                 </CardContent>
-               </Card>
+                </CardContent>
+              </Card>
             </div>
 
-                         {/* Gráfico Pessoal Simples */}
+            {/* Gráfico Pessoal Simples */}
              <Card className="shadow-md border-0 bg-white">
                <CardHeader className="pb-3">
                  <CardTitle className="text-lg font-bold text-gray-900">Minha Performance - 7 Dias</CardTitle>
                </CardHeader>
                <CardContent>
-                 <Chart
-                   data={chartData}
+            <Chart
+              data={chartData}
                    title=""
-                   type="line"
+              type="line"
                    height={180}
-                 />
+            />
                </CardContent>
              </Card>
 
-             {/* Recompensas Monetárias */}
-             <Card className="shadow-md border-0 bg-white">
+            {/* Recompensas Monetárias */}
+            <Card className="shadow-md border-0 bg-white">
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg font-bold text-gray-900">Recompensas Monetárias</CardTitle>
               </CardHeader>
@@ -1079,24 +1168,24 @@ export default function CollaboratorHome() {
                 <div className="space-y-4">
                                      <div className="grid grid-cols-2 gap-6">
                      <div className="bg-green-50 rounded-lg p-6">
-                       <div className="text-sm text-green-600 font-medium">Ganho na Semana</div>
+                      <div className="text-sm text-green-600 font-medium">Ganho na Semana</div>
                        <div className="text-xl font-bold text-green-700">
-                         {formatCurrency(centavosToReais(rewardStats?.totalEarnedThisWeek || 0))}
-                       </div>
-                     </div>
-                     
+                        {formatCurrency(centavosToReais(rewardStats?.totalEarnedThisWeek || 0))}
+                      </div>
+                    </div>
+                    
                      <div className="bg-blue-50 rounded-lg p-6">
-                       <div className="text-sm text-blue-600 font-medium">Disponível</div>
+                      <div className="text-sm text-blue-600 font-medium">Disponível</div>
                        <div className="text-xl font-bold text-blue-700">
-                         {formatCurrency(centavosToReais(rewardStats?.totalAvailableRewards || 0))}
-                       </div>
-                     </div>
+                        {formatCurrency(centavosToReais(rewardStats?.totalAvailableRewards || 0))}
+                      </div>
+                    </div>
                      
                      
-                   </div>
+                  </div>
 
-                                     {/* Lista de metas com recompensas */}
-                                                                                 {rewardStats?.rewardsByPeriod && rewardStats.rewardsByPeriod.length > 0 && (
+                  {/* Lista de metas com recompensas */}
+                  {rewardStats?.rewardsByPeriod && rewardStats.rewardsByPeriod.length > 0 && (
                         <div className="space-y-4">
                         <div className="text-sm font-medium text-gray-700 mb-3">Metas com Recompensas:</div>
                         
@@ -1109,14 +1198,14 @@ export default function CollaboratorHome() {
                              </div>
                            </div>
                          </div>
-                                                                        {rewardStats.rewardsByPeriod.slice(0, 3).map((reward, index) => (
+                      {rewardStats.rewardsByPeriod.slice(0, 3).map((reward, index) => (
                            <div key={reward.goalId} className="bg-gradient-to-r from-gray-50 to-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
                             <div className="flex items-center justify-between">
-                              <div className="flex-1">
+                          <div className="flex-1">
                                 <div className="flex items-center gap-2 mb-2">
                                   <div className="text-sm font-semibold text-gray-800">
-                                    {reward.goalTitle}
-                                  </div>
+                              {reward.goalTitle}
+                            </div>
                                   <div className={`px-2 py-1 rounded-full text-xs font-medium ${
                                     reward.goalType === 'numeric' ? 'bg-blue-100 text-blue-700' :
                                     reward.goalType === 'task_completion' ? 'bg-green-100 text-green-700' :
@@ -1134,7 +1223,7 @@ export default function CollaboratorHome() {
                                    </span>
                                    <span className="flex items-center gap-1">
                                      <TrendingUp className="w-3 h-3" />
-                                     {Math.round(reward.completionRate)}%
+                              {Math.round(reward.completionRate)}%
                                    </span>
                                    {reward.goalType === 'numeric' && reward.currentValue && (
                                      <span className="text-blue-600 font-medium">
@@ -1149,7 +1238,7 @@ export default function CollaboratorHome() {
                                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                                      {formatCurrency(centavosToReais(reward.dailyValue))}/dia
                                    </span>
-                                 </div>
+                            </div>
                                 
                                 {reward.goalType === 'numeric' && reward.currentValue && (
                                   <div className="w-full bg-blue-200 rounded-full h-1 mt-2">
@@ -1157,33 +1246,33 @@ export default function CollaboratorHome() {
                                       className="bg-blue-600 h-1 rounded-full transition-all duration-300" 
                                       style={{ width: `${Math.min((reward.currentValue || 0) / reward.targetValue * 100, 100)}%` }}
                                     ></div>
-                                  </div>
+                            </div>
                                 )}
-                              </div>
+                          </div>
                               
                               <div className="text-right ml-3">
                                 <div className="text-lg font-bold text-green-600">
-                                  {formatCurrency(centavosToReais(reward.earnedAmount))}
-                                </div>
+                              {formatCurrency(centavosToReais(reward.earnedAmount))}
+                            </div>
                                 <div className={`text-xs mt-1 px-2 py-1 rounded-full ${
                                   reward.isEarned ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
                                 }`}>
                                   {reward.isEarned ? '✅ Ganho' : '⏳ Pendente'}
                                 </div>
-                              </div>
                             </div>
                           </div>
-                        ))}
-                       
-                       {rewardStats.rewardsByPeriod.length > 3 && (
+                        </div>
+                      ))}
+                      
+                      {rewardStats.rewardsByPeriod.length > 3 && (
                          <div className="text-center py-3">
                            <div className="text-xs text-gray-500 bg-gray-100 rounded-lg py-2 px-3 inline-block">
                              +{rewardStats.rewardsByPeriod.length - 3} metas adicionais disponíveis
                            </div>
-                         </div>
-                       )}
-                     </div>
-                   )}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {(!rewardStats?.rewardsByPeriod || rewardStats.rewardsByPeriod.length === 0) && (
                     <div className="text-center py-4 text-gray-500">

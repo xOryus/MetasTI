@@ -30,6 +30,7 @@ export const USER_PROFILES_COLLECTION = process.env.NEXT_PUBLIC_APPWRITE_PROFILE
 export const SUBMISSIONS_COLLECTION = process.env.NEXT_PUBLIC_APPWRITE_SUBMISSIONS_COLLECTION_ID!;
 export const SECTOR_GOALS_COLLECTION = process.env.NEXT_PUBLIC_APPWRITE_SECTOR_GOALS_COLLECTION_ID!;
 export const CONTESTATIONS_COLLECTION = process.env.NEXT_PUBLIC_APPWRITE_CONTESTATIONS_COLLECTION_ID!;
+export const COMPLIMENTS_COLLECTION = process.env.NEXT_PUBLIC_APPWRITE_COMPLIMENTS_COLLECTION_ID!;
 export const PRINTS_BUCKET = process.env.NEXT_PUBLIC_APPWRITE_PRINTS_BUCKET_ID!;
 
 // Enums
@@ -151,6 +152,23 @@ export interface CreateContestationData {
   collaboratorId: string;
   managerId: string;
   reason: string;
+}
+
+// Elogios (Compliments)
+export interface Compliment {
+  $id: string;
+  managerId: string; // profileId do gestor
+  collaboratorId: string; // profileId do colaborador
+  message: string; // texto do elogio (pode conter emojis)
+  presetKey?: string; // chave do elogio padrão (opcional)
+  createdAt: string;
+}
+
+export interface CreateComplimentData {
+  managerId: string;
+  collaboratorId: string;
+  message: string;
+  presetKey?: string;
 }
 
 export interface CreateSectorGoalData {
